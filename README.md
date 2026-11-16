@@ -46,6 +46,26 @@ npm install
 npm run dev
 ```
 
+## Deploy
+
+The `Dockerfile` in this folder builds one production image that serves both the frontend and
+the API, so the whole app runs as a single web service.
+
+1. Create a free PostgreSQL database (for example on [Neon](https://neon.com)) and copy its
+   connection string.
+2. Create a web service from this repository on a Docker host (for example
+   [Render](https://render.com)), using the root `Dockerfile`.
+3. Set these environment variables on the service:
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | the PostgreSQL connection string |
+| `SECRET_KEY` | a long random string |
+| `TMDB_API_KEY` | your TMDB key |
+
+The app refuses to start in production without a real `SECRET_KEY`. Health check path:
+`/api/health`.
+
 ## Tests and lint
 
 ```bash
@@ -105,7 +125,7 @@ frontend/
 - [ ] Cover photo recognition with a vision model, as a fallback when there is no barcode
 - [ ] Alembic migrations
 - [ ] Frontend tests (Vitest)
-- [ ] Cloud deployment
+- [x] Cloud deployment (single Docker image)
 
 ## Credits
 
