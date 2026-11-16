@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: dvd
+      POSTGRES_PASSWORD: dvd
+      POSTGRES_DB: dvd
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dvd"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql+psycopg://dvd:dvd@db:5432/dvd
+      SECRET_KEY: ${SECRET_KEY:-dev-only-secret}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      CORS_ORIGINS: http://localhost:5173
+    volumes:
+      - ./backend/app:/app/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      VITE_PROXY_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
+  frontend-node-modules:
