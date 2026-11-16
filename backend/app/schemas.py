@@ -1,6 +1,11 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app import barcodes
+
+MediaType = Literal["movie", "tv"]
 
 
 class UserCreate(BaseModel):
@@ -32,6 +37,7 @@ class MovieOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    media_type: MediaType
     tmdb_id: int | None
     title: str
     year: int | None
@@ -42,6 +48,7 @@ class MovieOut(BaseModel):
 
 class MovieSearchResult(BaseModel):
     tmdb_id: int
+    media_type: MediaType
     title: str
     year: int | None
     poster_url: str | None
@@ -51,10 +58,17 @@ class InventoryItemCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     year: int | None = Field(default=None, ge=1880, le=2100)
     tmdb_id: int | None = None
+    media_type: MediaType = "movie"
     poster_url: str | None = Field(default=None, max_length=500)
+    barcode: str | None = None
     condition: str | None = Field(default=None, max_length=50)
     location: str | None = Field(default=None, max_length=100)
     notes: str | None = None
+
+    @field_validator("barcode")
+    @classmethod
+    def normalize_barcode(cls, value: str | None) -> str | None:
+        return barcodes.normalize(value) if value else None
 
 
 class InventoryItemUpdate(BaseModel):
@@ -67,6 +81,7 @@ class InventoryItemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    barcode: str | None
     condition: str | None
     location: str | None
     notes: str | None
@@ -90,3 +105,14 @@ class InventoryStats(BaseModel):
     top_genre: str | None
     oldest: FilmRef | None
     newest: FilmRef | None
+
+
+class BarcodeLookup(BaseModel):
+    barcode: str
+    # What the shop database calls the product, e.g. "Heat (DVD, 1995, Widescreen)".
+    product_title: str | None
+    # A cleaned-up title to search TMDB with, e.g. "Heat". None when nothing is known.
+    title_guess: str | None
+    # The title already on your shelf with this barcode, if any.
+    match: MovieOut | None
+    owned_count: int

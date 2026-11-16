@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     secret_key: str = DEFAULT_SECRET_KEY
     access_token_expire_minutes: int = 60 * 24
     tmdb_api_key: str = ""
+    # Optional. Without it barcode lookups use UPCitemdb's free tier (about 100 a day).
+    upcitemdb_user_key: str = ""
     cors_origins: str = "http://localhost:5173"
     # Folder holding the built frontend. Only present in the production image.
     static_dir: str = "static"

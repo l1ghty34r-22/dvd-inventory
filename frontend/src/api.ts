@@ -3,8 +3,11 @@ export interface User {
   email: string;
 }
 
+export type MediaType = "movie" | "tv";
+
 export interface Movie {
   id: number;
+  media_type: MediaType;
   tmdb_id: number | null;
   title: string;
   year: number | null;
@@ -15,6 +18,7 @@ export interface Movie {
 
 export interface MovieSearchResult {
   tmdb_id: number;
+  media_type: MediaType;
   title: string;
   year: number | null;
   poster_url: string | null;
@@ -35,6 +39,7 @@ export interface InventoryStats {
 
 export interface InventoryItem {
   id: number;
+  barcode: string | null;
   condition: string | null;
   location: string | null;
   notes: string | null;
@@ -51,10 +56,23 @@ export interface NewInventoryItem {
   title: string;
   year?: number | null;
   tmdb_id?: number | null;
+  media_type?: MediaType;
   poster_url?: string | null;
+  barcode?: string | null;
   condition?: string | null;
   location?: string | null;
   notes?: string | null;
+}
+
+export interface BarcodeLookup {
+  barcode: string;
+  /** The shop database's product name, e.g. "Heat (DVD, 1995, Widescreen)". */
+  product_title: string | null;
+  /** A cleaned-up title to search for, e.g. "Heat". */
+  title_guess: string | null;
+  /** The title already on your shelf with this barcode. */
+  match: Movie | null;
+  owned_count: number;
 }
 
 const TOKEN_KEY = "dvd_inventory_token";
@@ -136,6 +154,9 @@ export const api = {
 
   searchMovies: (q: string) =>
     request<MovieSearchResult[]>(`/movies/search?${new URLSearchParams({ q })}`),
+
+  lookupBarcode: (code: string) =>
+    request<BarcodeLookup>(`/movies/barcode/${encodeURIComponent(code)}`),
 
   addItem: (item: NewInventoryItem) => request<InventoryItem>("/inventory", json("POST", item)),
 

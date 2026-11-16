@@ -17,7 +17,9 @@ interface Props {
 
 export function DvdCase({ item, onRemove, removing }: Props) {
   const { movie } = item;
-  const details = [movie.year, item.location].filter(Boolean).join(", ");
+  const details = [movie.year, movie.media_type === "tv" && "TV series", item.location]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <li className="slot">

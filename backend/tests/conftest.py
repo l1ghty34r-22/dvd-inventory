@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import tmdb
+from app import barcodes, tmdb
 from app.database import Base, get_db
 from app.main import app
 
 FAKE_TMDB = {
-    603: tmdb.TmdbMovie(
+    ("movie", 603): tmdb.TmdbTitle(
         tmdb_id=603,
         title="The Matrix",
         year=1999,
@@ -19,13 +19,23 @@ FAKE_TMDB = {
         genres=["Action", "Science Fiction"],
         runtime=136,
     ),
-    949: tmdb.TmdbMovie(
+    ("movie", 949): tmdb.TmdbTitle(
         tmdb_id=949,
         title="Heat",
         year=1995,
         poster_url=None,
         genres=["Action", "Crime"],
         runtime=170,
+    ),
+    # Same TMDB id as Heat on purpose: film and TV ids overlap.
+    ("tv", 949): tmdb.TmdbTitle(
+        tmdb_id=949,
+        title="The Matrix Chronicles",
+        year=2003,
+        poster_url=None,
+        media_type="tv",
+        genres=["Animation"],
+        runtime=22,
     ),
 }
 
@@ -34,16 +44,28 @@ FAKE_TMDB = {
 def fake_tmdb(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tests never call the real TMDB API."""
 
-    def get_movie(tmdb_id: int) -> tmdb.TmdbMovie:
-        if tmdb_id not in FAKE_TMDB:
+    def get_title(tmdb_id: int, media_type: str = "movie") -> tmdb.TmdbTitle:
+        if (media_type, tmdb_id) not in FAKE_TMDB:
             raise tmdb.TmdbError("not found")
-        return FAKE_TMDB[tmdb_id]
+        return FAKE_TMDB[(media_type, tmdb_id)]
 
-    def search_movies(query: str, limit: int = 10) -> list[tmdb.TmdbMovie]:
-        return [m for m in FAKE_TMDB.values() if query.lower() in m.title.lower()][:limit]
+    def search_titles(query: str, limit: int = 12) -> list[tmdb.TmdbTitle]:
+        return [t for t in FAKE_TMDB.values() if query.lower() in t.title.lower()][:limit]
 
-    monkeypatch.setattr(tmdb, "get_movie", get_movie)
-    monkeypatch.setattr(tmdb, "search_movies", search_movies)
+    monkeypatch.setattr(tmdb, "get_title", get_title)
+    monkeypatch.setattr(tmdb, "search_titles", search_titles)
+
+
+@pytest.fixture(autouse=True)
+def fake_barcodes(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+    """Tests never call the real barcode service. Add entries to the returned dict."""
+    products: dict[str, str] = {}
+
+    def lookup_product_title(barcode: str) -> str | None:
+        return products.get(barcode)
+
+    monkeypatch.setattr(barcodes, "lookup_product_title", lookup_product_title)
+    return products
 
 
 @pytest.fixture

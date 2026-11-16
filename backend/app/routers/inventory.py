@@ -2,9 +2,9 @@ from collections import Counter
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
-from app import tmdb
+from app import barcodes, tmdb
 from app.deps import CurrentUser, DbSession
 from app.models import InventoryItem, Movie
 from app.schemas import (
@@ -21,9 +21,12 @@ router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
 def _find_or_create_movie(db: DbSession, payload: InventoryItemCreate) -> Movie:
     if payload.tmdb_id is not None:
-        query = select(Movie).where(Movie.tmdb_id == payload.tmdb_id)
+        query = select(Movie).where(
+            Movie.media_type == payload.media_type, Movie.tmdb_id == payload.tmdb_id
+        )
     else:
         query = select(Movie).where(
+            Movie.media_type == payload.media_type,
             Movie.tmdb_id.is_(None),
             func.lower(Movie.title) == payload.title.lower(),
             Movie.year.is_(None) if payload.year is None else Movie.year == payload.year,
@@ -40,11 +43,12 @@ def _new_movie(payload: InventoryItemCreate) -> Movie:
     if payload.tmdb_id is not None:
         # Prefer TMDB's own data over whatever the client sent.
         try:
-            details = tmdb.get_movie(payload.tmdb_id)
+            details = tmdb.get_title(payload.tmdb_id, payload.media_type)
         except tmdb.TmdbError:
             pass  # Fall back to the submitted fields so adding still works offline.
         else:
             return Movie(
+                media_type=details.media_type,
                 tmdb_id=details.tmdb_id,
                 title=details.title or payload.title,
                 year=details.year,
@@ -53,6 +57,7 @@ def _new_movie(payload: InventoryItemCreate) -> Movie:
                 runtime=details.runtime,
             )
     return Movie(
+        media_type=payload.media_type,
         tmdb_id=payload.tmdb_id,
         title=payload.title,
         year=payload.year,
@@ -73,13 +78,19 @@ def _get_own_item(db: DbSession, user_id: int, item_id: int) -> InventoryItem:
 def list_items(
     user: CurrentUser,
     db: DbSession,
-    q: str | None = Query(default=None, description="Filter by title"),
+    q: str | None = Query(default=None, description="Filter by title or barcode"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> InventoryPage:
     filters = [InventoryItem.user_id == user.id]
     if q:
-        filters.append(Movie.title.ilike(f"%{q}%"))
+        title_matches = Movie.title.ilike(f"%{q}%")
+        try:
+            barcode = barcodes.normalize(q)
+        except ValueError:
+            filters.append(title_matches)
+        else:
+            filters.append(or_(title_matches, InventoryItem.barcode == barcode))
 
     total = db.scalar(
         select(func.count(InventoryItem.id)).join(InventoryItem.movie).where(*filters)
@@ -140,6 +151,7 @@ def add_item(payload: InventoryItemCreate, user: CurrentUser, db: DbSession) -> 
     item = InventoryItem(
         user_id=user.id,
         movie_id=movie.id,
+        barcode=payload.barcode,
         condition=payload.condition,
         location=payload.location,
         notes=payload.notes,

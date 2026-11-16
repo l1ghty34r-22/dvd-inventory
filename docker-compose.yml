@@ -20,6 +20,7 @@ services:
       DATABASE_URL: postgresql+psycopg://dvd:dvd@db:5432/dvd
       SECRET_KEY: ${SECRET_KEY:-dev-only-secret}
       TMDB_API_KEY: ${TMDB_API_KEY:-}
+      UPCITEMDB_USER_KEY: ${UPCITEMDB_USER_KEY:-}
       CORS_ORIGINS: http://localhost:5173
     volumes:
       - ./backend/app:/app/app

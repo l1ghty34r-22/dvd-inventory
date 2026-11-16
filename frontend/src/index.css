@@ -383,3 +383,77 @@ button:disabled {
     transform: none;
   }
 }
+
+/* Barcode: scan or type, above the title search */
+
+.barcode {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.barcode-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.barcode-row input {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.barcode-status {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--case);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.barcode > div > p {
+  margin-top: 0.75rem;
+}
+
+.scanner {
+  display: grid;
+  justify-items: start;
+  gap: 0.6rem;
+}
+
+.scanner-view {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 50vh;
+  overflow: hidden;
+  background: var(--case);
+  border-radius: 8px;
+}
+
+.scanner-view video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A wide box the shape of a barcode, to show where to aim. */
+.scanner-guide {
+  position: absolute;
+  inset: 32% 12%;
+  border: 2px solid var(--sheen-a);
+  border-radius: 6px;
+  box-shadow: 0 0 0 100vmax #0b0a1466;
+}
+
+@media (max-width: 520px) {
+  .barcode-row {
+    flex-wrap: wrap;
+  }
+
+  .barcode-row > .secondary:first-child {
+    flex-basis: 100%;
+  }
+}

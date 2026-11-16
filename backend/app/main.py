@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, engine, upgrade_schema
 from app.routers import auth, inventory, movies
 
 
@@ -15,6 +15,7 @@ from app.routers import auth, inventory, movies
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Fine for a first version. Replace with Alembic migrations once the schema settles.
     Base.metadata.create_all(bind=engine)
+    upgrade_schema(engine)
     yield
 
 

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -24,12 +24,15 @@ class User(Base):
 
 
 class Movie(Base):
-    """Shared film metadata. Fetched once, referenced by many inventory items."""
+    """Shared film or TV show metadata. Fetched once, referenced by many inventory items."""
 
     __tablename__ = "movies"
+    # TMDB numbers films and TV shows separately, so an id is only unique within its type.
+    __table_args__ = (Index("uq_movies_media_tmdb", "media_type", "tmdb_id", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tmdb_id: Mapped[int | None] = mapped_column(Integer, unique=True, index=True)
+    media_type: Mapped[str] = mapped_column(String(10), default="movie", server_default="movie")
+    tmdb_id: Mapped[int | None] = mapped_column(Integer, index=True)
     title: Mapped[str] = mapped_column(String(255), index=True)
     year: Mapped[int | None] = mapped_column(Integer)
     poster_url: Mapped[str | None] = mapped_column(String(500))
@@ -45,6 +48,8 @@ class InventoryItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), index=True)
+    # EAN-13 / EAN-8 digits, when the disc was scanned or the code typed in.
+    barcode: Mapped[str | None] = mapped_column(String(13), index=True)
     condition: Mapped[str | None] = mapped_column(String(50))
     location: Mapped[str | None] = mapped_column(String(100))
     notes: Mapped[str | None] = mapped_column(Text)

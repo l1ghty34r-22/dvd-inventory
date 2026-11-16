@@ -45,7 +45,10 @@ export function InventoryPage() {
           <section className="empty">
             <div className="empty-ledge" aria-hidden="true" />
             <h2>Nothing on the shelf yet</h2>
-            <p className="muted">Search for a film you own and it goes straight on, cover and all.</p>
+            <p className="muted">
+              Search for a film or TV show you own, or scan its barcode, and it goes straight on,
+              cover and all.
+            </p>
             <button type="button" className="primary" onClick={() => setAdding(true)}>
               Add your first DVD
             </button>
@@ -57,8 +60,8 @@ export function InventoryPage() {
             <div className="toolbar">
               <input
                 type="search"
-                placeholder="Find a film on your shelf"
-                aria-label="Find a film on your shelf"
+                placeholder="Find a title or barcode on your shelf"
+                aria-label="Find a title or barcode on your shelf"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -99,7 +102,7 @@ export function InventoryPage() {
       </main>
 
       <footer className="footnote">
-        Film details and covers come from TMDB. This product uses the TMDB API but is not endorsed
+        Film and TV details and covers come from TMDB. This product uses the TMDB API but is not endorsed
         or certified by TMDB.
       </footer>
 
