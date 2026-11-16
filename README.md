@@ -34,11 +34,16 @@ Without a key the app still works; you type titles in by hand.
 
 ### Barcode scanning
 
-In the Add dialog, tap **Scan barcode** to read a disc's barcode with the phone or laptop camera,
-or type the number in (a USB barcode scanner also works there). The app looks the code up on
-[UPCitemdb](https://www.upcitemdb.com/), cleans the product name ("Friends: The Complete First
-Season (DVD)" becomes "Friends") and searches for it, so you pick the right title. The barcode is
-saved with the disc, so scanning it again later finds it on your shelf without a lookup.
+Tap **Scan barcode** on My collection (or in the Add dialog) and point the camera at a disc's
+barcode, or type the number in (a USB barcode scanner also works there). The app looks the code
+up on [UPCitemdb](https://www.upcitemdb.com/), cleans the product name ("Fury (DVD, 2015)"
+becomes "Fury"), picks the most likely title from TMDB (exact title, a year near the one on the
+product, TV if the name mentions a season) and opens that title's page: story, cast, and
+**Add to my collection**. If it guessed wrong, **Not this one?** lists the other matches. The
+barcode is saved with the disc, so scanning it again shows that you already own it.
+
+Product names are cached, so each barcode is looked up once. If the lookup service is
+unavailable, you type the title instead and the barcode is still saved.
 
 - Browsers only allow the camera on HTTPS pages or on `localhost`. To scan with a phone against
   your dev machine, use the deployed site or an HTTPS tunnel.
@@ -139,7 +144,8 @@ frontend/
 | PATCH | `/api/inventory/{id}` | Update condition, location, notes |
 | DELETE | `/api/inventory/{id}` | Remove a DVD |
 | GET | `/api/movies/search?q=` | Search TMDB films and TV shows (needs `TMDB_API_KEY`) |
-| GET | `/api/movies/barcode/{code}` | What a barcode is: your shelf first, then UPCitemdb |
+| GET | `/api/movies/barcode/{code}` | What a barcode is: your shelf first, then UPCitemdb, with the best TMDB match |
+| GET | `/api/movies/{media_type}/{tmdb_id}` | A title's page from TMDB (story, cast), and how many you own |
 
 ## Roadmap
 

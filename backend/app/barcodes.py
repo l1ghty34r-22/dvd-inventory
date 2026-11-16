@@ -1,6 +1,7 @@
 """Turn a DVD barcode (UPC / EAN) into a title we can search TMDB with."""
 
 import re
+from typing import Any
 
 import httpx
 
@@ -114,3 +115,44 @@ def lookup_product_title(barcode: str) -> str | None:
         raise BarcodeError("Barcode lookup failed") from exc
     title = (items[0].get("title") or "").strip() if items else ""
     return title or None
+
+
+_YEAR = re.compile(r"\b(19[0-9]{2}|20[0-9]{2})\b")
+
+
+def looks_like_tv(product_title: str) -> bool:
+    return bool(_SEASON.search(product_title))
+
+
+def _simplify(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
+
+
+def pick_best(product_title: str, title_guess: str, results: list[Any]) -> Any | None:
+    """Pick the search result most likely to be the product on the disc.
+
+    `results` are TMDB search results in relevance order (anything with title, year and
+    media_type). An exact title beats a partial one; a year near the one printed on the product
+    helps (DVD releases trail the film by a year or so); a "season" in the name means TV.
+    """
+    if not results:
+        return None
+    wanted = _simplify(title_guess)
+    years = [int(y) for y in _YEAR.findall(product_title)]
+    tv_hint = looks_like_tv(product_title)
+
+    def score(pair: tuple[int, Any]) -> float:
+        index, result = pair
+        name = _simplify(result.title)
+        points = -0.2 * index  # Keep TMDB's own relevance order as the tie-breaker.
+        if name == wanted:
+            points += 3
+        elif name.startswith(wanted) or wanted.startswith(name):
+            points += 1
+        if years and result.year and any(0 <= y - result.year <= 2 for y in years):
+            points += 1.5
+        if tv_hint == (result.media_type == "tv"):
+            points += 1
+        return points
+
+    return max(enumerate(results), key=score)[1]

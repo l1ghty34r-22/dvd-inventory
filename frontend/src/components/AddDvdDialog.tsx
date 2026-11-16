@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { api, ApiError } from "../api";
-import type { BarcodeLookup, Movie, MovieSearchResult } from "../api";
+import type { BarcodeLookup, MediaType, MovieSearchResult, NewInventoryItem } from "../api";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { TitleBody, TitleHeader } from "./TitleInfo";
 
 function useDebounced(value: string, delayMs: number): string {
   const [debounced, setDebounced] = useState(value);
@@ -15,15 +16,22 @@ function useDebounced(value: string, delayMs: number): string {
   return debounced;
 }
 
-const kindLabel = (mediaType: Movie["media_type"]) => (mediaType === "tv" ? "TV series" : "Film");
+const kindLabel = (mediaType: MediaType) => (mediaType === "tv" ? "TV series" : "Film");
 const resultKey = (r: { media_type: string; tmdb_id: number | null }) => `${r.media_type}:${r.tmdb_id}`;
+
+interface Target {
+  media_type: MediaType;
+  tmdb_id: number;
+}
 
 interface Props {
   open: boolean;
+  /** Open with the camera already on. */
+  startScanning?: boolean;
   onClose: () => void;
 }
 
-export function AddDvdDialog({ open, onClose }: Props) {
+export function AddDvdDialog({ open, startScanning = false, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -35,13 +43,13 @@ export function AddDvdDialog({ open, onClose }: Props) {
 
   return (
     <dialog ref={ref} className="add-dialog" onClose={onClose} aria-labelledby="add-dialog-title">
-      {/* Mounted only while open, so the search starts fresh and the camera turns off on close. */}
-      {open && <AddDvdBody onClose={onClose} />}
+      {/* Mounted only while open, so it starts fresh and the camera turns off on close. */}
+      {open && <AddDvdBody onClose={onClose} startScanning={startScanning} />}
     </dialog>
   );
 }
 
-function AddDvdBody({ onClose }: { onClose: () => void }) {
+function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScanning: boolean }) {
   const queryClient = useQueryClient();
   const [term, setTerm] = useState("");
   const [location, setLocation] = useState("");
@@ -50,16 +58,18 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
   const [addedKeys, setAddedKeys] = useState<string[]>([]);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
 
-  const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning] = useState(startScanning);
   const [typedBarcode, setTypedBarcode] = useState("");
   // The barcode that will be saved with the next title added.
   const [scan, setScan] = useState<BarcodeLookup | null>(null);
+  // When set, the dialog shows that title's page instead of the search.
+  const [preview, setPreview] = useState<Target | null>(null);
 
   const query = useDebounced(term.trim(), 300);
   const search = useQuery({
     queryKey: ["movie-search", query],
     queryFn: () => api.searchMovies(query),
-    enabled: query.length >= 2 && !manual,
+    enabled: query.length >= 2 && !manual && !preview,
     retry: false,
   });
   // 503 means the server has no TMDB key, so only typing the details in will work.
@@ -73,6 +83,8 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
       setTypedBarcode("");
       setLastAdded(null);
       if (info.title_guess) setTerm(info.title_guess);
+      // Go straight to the title the barcode most likely is.
+      if (info.best_match) setPreview(info.best_match);
     },
   });
 
@@ -89,15 +101,17 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
 
   const barcode = scan?.barcode ?? null;
 
-  function addFromSearch(movie: MovieSearchResult | Movie) {
-    addItem.mutate({
+  function addTitle(movie: Omit<NewInventoryItem, "barcode" | "location">) {
+    addItem.mutate({ ...movie, barcode, location: location.trim() || null });
+  }
+
+  function addFromSearch(movie: MovieSearchResult) {
+    addTitle({
       title: movie.title,
       year: movie.year,
       tmdb_id: movie.tmdb_id,
       media_type: movie.media_type,
       poster_url: movie.poster_url,
-      barcode,
-      location: location.trim() || null,
     });
   }
 
@@ -127,6 +141,43 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
   function handleDetected(code: string) {
     setScanning(false);
     lookup.mutate(code);
+  }
+
+  function scanAnother() {
+    setPreview(null);
+    setScan(null);
+    setLastAdded(null);
+    addItem.reset();
+    lookup.reset();
+    setScanning(true);
+  }
+
+  if (preview) {
+    return (
+      <>
+        <header className="add-dialog-head">
+          <button type="button" className="text-button" onClick={() => setPreview(null)}>
+            ← Search instead
+          </button>
+          <button type="button" className="text-button" onClick={onClose}>
+            Done
+          </button>
+        </header>
+        <TitlePreviewPanel
+          target={preview}
+          scan={scan}
+          location={location}
+          onLocationChange={setLocation}
+          onAdd={addTitle}
+          adding={addItem.isPending}
+          addError={addItem.isError ? addItem.error.message : null}
+          added={addedKeys.includes(resultKey(preview))}
+          onPick={setPreview}
+          onScanAnother={scanAnother}
+          onClose={onClose}
+        />
+      </>
+    );
   }
 
   return (
@@ -169,22 +220,7 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
           {lookup.isError && <p className="error">{lookup.error.message}</p>}
           {scan && !lookup.isPending && (
             <div className="barcode-status">
-              {scan.match ? (
-                <>
-                  <p>
-                    Already on your shelf: <strong>{scan.match.title}</strong>
-                    {scan.owned_count > 1 && ` (${scan.owned_count} copies)`}.
-                  </p>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => scan.match && addFromSearch(scan.match)}
-                    disabled={addItem.isPending}
-                  >
-                    Add another copy
-                  </button>
-                </>
-              ) : scan.lookup_error ? (
+              {scan.lookup_error ? (
                 <p>
                   {scan.lookup_error} Type the title below instead, and barcode {scan.barcode} is
                   saved with it, so next time this disc is recognised straight away.
@@ -219,7 +255,7 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder={showManual ? "Title" : "Start typing a title"}
-            autoFocus
+            autoFocus={!startScanning}
             required
           />
         </label>
@@ -285,12 +321,17 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
                     ) : (
                       <span className="results-noposter" />
                     )}
-                    <span className="results-title">
+                    <button
+                      type="button"
+                      className="results-title"
+                      onClick={() => setPreview(movie)}
+                      title="See the story and cast"
+                    >
                       <strong>{movie.title}</strong>
                       <span className="muted">
                         {movie.year ? `${movie.year} · ${kind}` : kind}
                       </span>
-                    </span>
+                    </button>
                     <button
                       type="button"
                       className={added ? "text-button" : "secondary"}
@@ -314,5 +355,152 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
         </button>
       )}
     </>
+  );
+}
+
+interface PreviewProps {
+  target: Target;
+  scan: BarcodeLookup | null;
+  location: string;
+  onLocationChange: (value: string) => void;
+  onAdd: (movie: Omit<NewInventoryItem, "barcode" | "location">) => void;
+  adding: boolean;
+  addError: string | null;
+  added: boolean;
+  onPick: (target: Target) => void;
+  onScanAnother: () => void;
+  onClose: () => void;
+}
+
+/** A title's page, opened from a scan or a search result, with the option to add it. */
+function TitlePreviewPanel(props: PreviewProps) {
+  const { target, scan, added } = props;
+  const [showOthers, setShowOthers] = useState(false);
+  const preview = useQuery({
+    queryKey: ["inventory", "preview", target.media_type, target.tmdb_id],
+    queryFn: () => api.previewTitle(target.media_type, target.tmdb_id),
+  });
+
+  const others = (scan?.candidates ?? []).filter(
+    (c) => resultKey(c) !== resultKey(target),
+  );
+  // Include the scanner's first pick when the user has switched away from it.
+  if (scan?.best_match && resultKey(scan.best_match) !== resultKey(target)) {
+    others.unshift(scan.best_match);
+  }
+
+  return (
+    <div className="preview">
+      {scan && (
+        <p className="muted preview-source">
+          Scanned barcode {scan.barcode}
+          {scan.product_title && <> · “{scan.product_title}”</>}
+        </p>
+      )}
+
+      {preview.isPending && <p className="muted">Loading…</p>}
+      {preview.isError && <p className="error">Could not load this title: {preview.error.message}</p>}
+
+      {preview.data && (
+        <>
+          <TitleHeader title={preview.data} details={preview.data.details} />
+
+          <div className="preview-add" aria-live="polite">
+            {added ? (
+              <>
+                <p className="confirm">
+                  <strong>Added {preview.data.title} to your collection.</strong>
+                </p>
+                <div className="preview-add-row">
+                  <button type="button" className="button primary" onClick={props.onScanAnother}>
+                    Scan another
+                  </button>
+                  <button type="button" className="button secondary" onClick={props.onClose}>
+                    Done
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {preview.data.owned_count > 0 && (
+                  <p>
+                    You already own {preview.data.owned_count === 1 ? "a copy" : `${preview.data.owned_count} copies`} of this.
+                  </p>
+                )}
+                <div className="preview-add-row">
+                  <input
+                    value={props.location}
+                    onChange={(e) => props.onLocationChange(e.target.value)}
+                    placeholder="Where you keep it (optional)"
+                    aria-label="Where you keep it (optional)"
+                  />
+                  <button
+                    type="button"
+                    className="button primary"
+                    disabled={props.adding}
+                    onClick={() =>
+                      props.onAdd({
+                        title: preview.data.title,
+                        year: preview.data.year,
+                        tmdb_id: preview.data.tmdb_id,
+                        media_type: preview.data.media_type,
+                        poster_url: preview.data.poster_url,
+                      })
+                    }
+                  >
+                    {preview.data.owned_count > 0 ? "Add another copy" : "Add to my collection"}
+                  </button>
+                </div>
+                {props.addError && <p className="error">Could not add it: {props.addError}</p>}
+              </>
+            )}
+          </div>
+
+          {others.length > 0 && !added && (
+            <div className="preview-others">
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setShowOthers(!showOthers)}
+                aria-expanded={showOthers}
+              >
+                {showOthers ? "Hide other matches" : "Not this one? See other matches"}
+              </button>
+              {showOthers && (
+                <ul className="results">
+                  {others.map((movie) => (
+                    <li key={resultKey(movie)}>
+                      {movie.poster_url ? (
+                        <img src={movie.poster_url} alt="" loading="lazy" />
+                      ) : (
+                        <span className="results-noposter" />
+                      )}
+                      <span className="results-title static">
+                        <strong>{movie.title}</strong>
+                        <span className="muted">
+                          {[movie.year, kindLabel(movie.media_type)].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          setShowOthers(false);
+                          props.onPick(movie);
+                        }}
+                      >
+                        This one
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          <TitleBody details={preview.data.details} />
+        </>
+      )}
+    </div>
   );
 }

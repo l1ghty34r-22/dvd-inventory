@@ -3,14 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api";
 import type { InventoryItemDetails } from "../api";
-import { CaseCover } from "./DvdCase";
-
-export function formatRuntime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (!hours) return `${rest} min`;
-  return rest ? `${hours} h ${rest} min` : `${hours} h`;
-}
+import { TitleBody, TitleHeader } from "./TitleInfo";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -82,15 +75,6 @@ function DetailsContent({ data, onClose }: { data: InventoryItemDetails; onClose
     },
   });
 
-  const facts = [
-    movie.year,
-    movie.media_type === "tv" ? "TV series" : "Film",
-    details?.seasons &&
-      `${details.seasons} ${details.seasons === 1 ? "season" : "seasons"}` +
-        (details.episodes ? `, ${details.episodes} episodes` : ""),
-    movie.runtime && (movie.media_type === "tv" ? `${movie.runtime} min episodes` : formatRuntime(movie.runtime)),
-  ].filter(Boolean);
-
   const copy: [string, string][] = [
     ["Where it is", item.location ?? "Not set"],
     ["Condition", item.condition ?? "Not set"],
@@ -100,29 +84,7 @@ function DetailsContent({ data, onClose }: { data: InventoryItemDetails; onClose
 
   return (
     <>
-      <div className="details-top">
-        <div className="case details-cover">
-          <CaseCover title={movie.title} posterUrl={movie.poster_url} />
-        </div>
-        <div className="details-heading">
-          <h2>{movie.title}</h2>
-          <p className="muted">{facts.join(" · ")}</p>
-          {movie.genres.length > 0 && (
-            <ul className="chips" aria-label="Genres">
-              {movie.genres.map((genre) => (
-                <li key={genre}>{genre}</li>
-              ))}
-            </ul>
-          )}
-          {details?.tagline && <p className="tagline">“{details.tagline}”</p>}
-          {details && details.crew.length > 0 && (
-            <p>
-              <span className="muted">{details.crew_label} </span>
-              {details.crew.join(", ")}
-            </p>
-          )}
-        </div>
-      </div>
+      <TitleHeader title={movie} details={details} />
 
       {data.details_error && <p className="muted">{data.details_error}</p>}
       {!details && !data.details_error && (
@@ -131,33 +93,7 @@ function DetailsContent({ data, onClose }: { data: InventoryItemDetails; onClose
         </p>
       )}
 
-      {details?.overview && (
-        <section className="details-section">
-          <h3>Story</h3>
-          <p>{details.overview}</p>
-        </section>
-      )}
-
-      {details && details.cast.length > 0 && (
-        <section className="details-section">
-          <h3>Cast</h3>
-          <ul className="cast">
-            {details.cast.map((person) => (
-              <li key={`${person.name}-${person.character}`}>
-                {person.photo_url ? (
-                  <img src={person.photo_url} alt="" loading="lazy" />
-                ) : (
-                  <span className="cast-nophoto" aria-hidden="true">
-                    {person.name.charAt(0)}
-                  </span>
-                )}
-                <strong>{person.name}</strong>
-                {person.character && <span className="muted">{person.character}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {details && <TitleBody details={details} />}
 
       <section className="details-section">
         <h3>Your copy</h3>

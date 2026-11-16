@@ -121,6 +121,9 @@ class BarcodeLookup(BaseModel):
     # Set when the barcode database could not be asked (daily limit, outage). The barcode is
     # still valid and can be saved with whatever title the user picks.
     lookup_error: str | None = None
+    # The title the barcode most likely is, and other plausible matches to choose from.
+    best_match: MovieSearchResult | None = None
+    candidates: list[MovieSearchResult] = []
 
 
 class NamedCount(BaseModel):
@@ -177,3 +180,17 @@ class InventoryItemDetails(BaseModel):
     # None when the title was typed in by hand, or TMDB could not be reached.
     details: TitleDetails | None
     details_error: str | None = None
+
+
+class TitlePreview(BaseModel):
+    """A film or show from TMDB, whether or not it is on the user's shelf."""
+
+    tmdb_id: int
+    media_type: MediaType
+    title: str
+    year: int | None
+    poster_url: str | None
+    genres: list[str]
+    runtime: int | None
+    details: TitleDetails
+    owned_count: int

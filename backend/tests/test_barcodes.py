@@ -58,6 +58,8 @@ def test_lookup_unknown_barcode(client, auth_headers):
         "match": None,
         "owned_count": 0,
         "lookup_error": None,
+        "best_match": None,
+        "candidates": [],
     }
 
 
@@ -182,3 +184,78 @@ def test_upgrade_schema_from_first_release(tmp_path):
         conn.execute(
             text("INSERT INTO movies (tmdb_id, title, media_type) VALUES (949, 'Show', 'tv')")
         )
+
+
+class Result:
+    def __init__(self, title, year, media_type="movie"):
+        self.title, self.year, self.media_type = title, year, media_type
+
+
+def test_pick_best_prefers_exact_title_and_nearby_year():
+    results = [
+        Result("Fury", 1936),
+        Result("Fury Road", 2015),
+        Result("Fury", 2014),
+        Result("Fury", 2010, "tv"),
+    ]
+    best = barcodes.pick_best("Fury (DVD, 2015, Widescreen)", "Fury", results)
+    assert (best.title, best.year) == ("Fury", 2014)
+
+
+def test_pick_best_without_year_keeps_relevance_order():
+    results = [Result("Heat", 1995), Result("Heat", 1986)]
+    assert barcodes.pick_best("Heat DVD", "Heat", results).year == 1995
+
+
+def test_pick_best_prefers_tv_for_season_sets():
+    results = [Result("Friends", 2001), Result("Friends", 1994, "tv")]
+    best = barcodes.pick_best("Friends: The Complete First Season", "Friends", results)
+    assert best.media_type == "tv"
+
+
+def test_pick_best_with_no_results():
+    assert barcodes.pick_best("Anything", "Anything", []) is None
+
+
+def test_scan_goes_straight_to_the_best_title(client, auth_headers, fake_barcodes):
+    fake_barcodes[HEAT_EAN] = "Heat (DVD, 1996, Widescreen)"
+    body = client.get(f"/api/movies/barcode/{HEAT_UPC}", headers=auth_headers).json()
+    assert body["best_match"]["title"] == "Heat"
+    assert body["best_match"]["tmdb_id"] == 949
+    assert body["best_match"]["media_type"] == "movie"
+
+
+def test_scan_of_owned_disc_points_at_its_title(client, auth_headers):
+    client.post(
+        "/api/inventory",
+        json={"title": "Heat", "tmdb_id": 949, "barcode": HEAT_EAN},
+        headers=auth_headers,
+    )
+    body = client.get(f"/api/movies/barcode/{HEAT_EAN}", headers=auth_headers).json()
+    assert body["owned_count"] == 1
+    assert (body["best_match"]["media_type"], body["best_match"]["tmdb_id"]) == ("movie", 949)
+
+
+def test_title_preview(client, auth_headers):
+    response = client.get("/api/movies/movie/603", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "The Matrix"
+    assert body["genres"] == ["Action", "Science Fiction"]
+    assert body["details"]["overview"] == "About The Matrix."
+    assert body["details"]["crew_label"] == "Directed by"
+    assert body["owned_count"] == 0
+
+    client.post("/api/inventory", json={"title": "x", "tmdb_id": 603}, headers=auth_headers)
+    body = client.get("/api/movies/movie/603", headers=auth_headers).json()
+    assert body["owned_count"] == 1
+    # The TV show with the same id is a different title, not owned.
+    tv = client.get("/api/movies/tv/949", headers=auth_headers).json()
+    assert tv["title"] == "The Matrix Chronicles"
+    assert tv["owned_count"] == 0
+
+
+def test_title_preview_errors(client, auth_headers):
+    assert client.get("/api/movies/podcast/1", headers=auth_headers).status_code == 422
+    assert client.get("/api/movies/movie/123456", headers=auth_headers).status_code == 502
+    assert client.get("/api/movies/movie/603").status_code == 401

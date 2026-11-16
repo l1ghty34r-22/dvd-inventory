@@ -67,7 +67,12 @@ def fake_tmdb(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(tmdb, "get_title", get_title)
+
+    def get_full(tmdb_id: int, media_type: str = "movie"):
+        return get_title(tmdb_id, media_type), get_details(tmdb_id, media_type)
+
     monkeypatch.setattr(tmdb, "get_details", get_details)
+    monkeypatch.setattr(tmdb, "get_full", get_full)
     monkeypatch.setattr(tmdb, "search_titles", search_titles)
 
 

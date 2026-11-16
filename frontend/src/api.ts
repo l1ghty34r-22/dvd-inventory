@@ -129,6 +129,22 @@ export interface BarcodeLookup {
   owned_count: number;
   /** Set when the barcode database could not be asked; the barcode can still be saved. */
   lookup_error: string | null;
+  /** The title this barcode most likely is. */
+  best_match: MovieSearchResult | null;
+  /** Other plausible titles, for "Not this one?". */
+  candidates: MovieSearchResult[];
+}
+
+export interface TitlePreview {
+  tmdb_id: number;
+  media_type: MediaType;
+  title: string;
+  year: number | null;
+  poster_url: string | null;
+  genres: string[];
+  runtime: number | null;
+  details: TitleDetails;
+  owned_count: number;
 }
 
 const TOKEN_KEY = "dvd_inventory_token";
@@ -215,6 +231,9 @@ export const api = {
 
   lookupBarcode: (code: string) =>
     request<BarcodeLookup>(`/movies/barcode/${encodeURIComponent(code)}`),
+
+  previewTitle: (mediaType: MediaType, tmdbId: number) =>
+    request<TitlePreview>(`/movies/${mediaType}/${tmdbId}`),
 
   addItem: (item: NewInventoryItem) => request<InventoryItem>("/inventory", json("POST", item)),
 

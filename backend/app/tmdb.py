@@ -125,8 +125,17 @@ def _cast_member(person: dict) -> CastMember:
 
 
 def get_details(tmdb_id: int, media_type: MediaType = "movie") -> TmdbDetails:
+    return get_full(tmdb_id, media_type)[1]
+
+
+def get_full(tmdb_id: int, media_type: MediaType = "movie") -> tuple[TmdbTitle, TmdbDetails]:
+    """Basics (title, year, poster, genres, runtime) and details in a single TMDB call."""
     credits_key = "aggregate_credits" if media_type == "tv" else "credits"
     data = _get(f"/{media_type}/{tmdb_id}", {"append_to_response": credits_key})
+    return _to_title(data, media_type), _to_details(data, media_type, credits_key)
+
+
+def _to_details(data: dict, media_type: MediaType, credits_key: str) -> TmdbDetails:
     credits = data.get(credits_key) or {}
     cast = [_cast_member(person) for person in (credits.get("cast") or [])[:CAST_LIMIT]]
 
