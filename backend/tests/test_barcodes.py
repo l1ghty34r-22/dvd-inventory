@@ -57,6 +57,7 @@ def test_lookup_unknown_barcode(client, auth_headers):
         "title_guess": None,
         "match": None,
         "owned_count": 0,
+        "lookup_error": None,
     }
 
 
@@ -77,13 +78,34 @@ def test_lookup_requires_login(client):
     assert client.get(f"/api/movies/barcode/{HEAT_UPC}").status_code == 401
 
 
-def test_lookup_rate_limited(client, auth_headers, monkeypatch):
+def test_lookup_rate_limited_still_returns_the_barcode(client, auth_headers, monkeypatch):
     def rate_limited(barcode: str):
-        raise barcodes.BarcodeRateLimitedError("used up")
+        raise barcodes.BarcodeRateLimitedError("daily limit")
 
     monkeypatch.setattr(barcodes, "lookup_product_title", rate_limited)
     response = client.get(f"/api/movies/barcode/{HEAT_UPC}", headers=auth_headers)
-    assert response.status_code == 429
+    assert response.status_code == 200
+    body = response.json()
+    assert body["barcode"] == HEAT_EAN
+    assert body["title_guess"] is None
+    assert body["lookup_error"] == "daily limit"
+
+
+def test_product_titles_are_cached_for_everyone(client, auth_headers, fake_barcodes, monkeypatch):
+    fake_barcodes[HEAT_EAN] = "Heat (DVD)"
+    assert (
+        client.get(f"/api/movies/barcode/{HEAT_EAN}", headers=auth_headers).json()["title_guess"]
+        == "Heat"
+    )
+
+    def must_not_call(barcode: str):
+        raise AssertionError("should use the cached product title")
+
+    monkeypatch.setattr(barcodes, "lookup_product_title", must_not_call)
+    other = register_and_login(client, "other@example.com")
+    body = client.get(f"/api/movies/barcode/{HEAT_UPC}", headers=other).json()
+    assert body["product_title"] == "Heat (DVD)"
+    assert body["lookup_error"] is None
 
 
 def test_scanned_disc_is_recognised_from_own_shelf(client, auth_headers, monkeypatch):

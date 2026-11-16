@@ -93,7 +93,7 @@ def lookup_product_title(barcode: str) -> str | None:
     try:
         response = httpx.get(url, params={"upc": barcode}, headers=headers, timeout=10)
     except httpx.HTTPError as exc:
-        raise BarcodeError("Barcode lookup failed") from exc
+        raise BarcodeError("The barcode database could not be reached.") from exc
 
     if response.status_code == 429:
         try:
@@ -101,8 +101,8 @@ def lookup_product_title(barcode: str) -> str | None:
         except ValueError:
             reason = None
         if reason == "TOO_FAST":
-            raise BarcodeRateLimitedError("Too many barcode lookups in a row. Wait a minute.")
-        raise BarcodeRateLimitedError("Barcode lookups are used up for today. Search by title.")
+            raise BarcodeRateLimitedError("The barcode database is busy. Try again in a minute.")
+        raise BarcodeRateLimitedError("The barcode database's daily limit has been reached.")
     if response.status_code in (400, 404):
         return None  # Unknown or invalid code.
     if response.is_error:

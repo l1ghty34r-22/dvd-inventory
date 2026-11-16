@@ -184,6 +184,11 @@ function AddDvdBody({ onClose }: { onClose: () => void }) {
                     Add another copy
                   </button>
                 </>
+              ) : scan.lookup_error ? (
+                <p>
+                  {scan.lookup_error} Type the title below instead, and barcode {scan.barcode} is
+                  saved with it, so next time this disc is recognised straight away.
+                </p>
               ) : scan.product_title ? (
                 <p>
                   Barcode {scan.barcode} is “{scan.product_title}”. Pick the right title below and

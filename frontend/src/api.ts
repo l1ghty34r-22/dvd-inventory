@@ -127,6 +127,8 @@ export interface BarcodeLookup {
   /** The title already on your shelf with this barcode. */
   match: Movie | null;
   owned_count: number;
+  /** Set when the barcode database could not be asked; the barcode can still be saved. */
+  lookup_error: string | null;
 }
 
 const TOKEN_KEY = "dvd_inventory_token";

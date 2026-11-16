@@ -118,6 +118,9 @@ class BarcodeLookup(BaseModel):
     # The title already on your shelf with this barcode, if any.
     match: MovieOut | None
     owned_count: int
+    # Set when the barcode database could not be asked (daily limit, outage). The barcode is
+    # still valid and can be saved with whatever title the user picks.
+    lookup_error: str | None = None
 
 
 class NamedCount(BaseModel):

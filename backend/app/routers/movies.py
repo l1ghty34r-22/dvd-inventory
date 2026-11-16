@@ -3,7 +3,7 @@ from sqlalchemy import func, select
 
 from app import barcodes, tmdb
 from app.deps import CurrentUser, DbSession
-from app.models import InventoryItem
+from app.models import BarcodeProduct, InventoryItem
 from app.schemas import BarcodeLookup, MovieOut, MovieSearchResult
 
 router = APIRouter(prefix="/api/movies", tags=["movies"])
@@ -60,12 +60,25 @@ def lookup_barcode(code: str, user: CurrentUser, db: DbSession) -> BarcodeLookup
             owned_count=owned_count,
         )
 
-    try:
-        product_title = barcodes.lookup_product_title(barcode)
-    except barcodes.BarcodeRateLimitedError as exc:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(exc)) from exc
-    except barcodes.BarcodeError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+    cached = db.get(BarcodeProduct, barcode)
+    if cached is not None:
+        product_title = cached.product_title
+    else:
+        try:
+            product_title = barcodes.lookup_product_title(barcode)
+        except barcodes.BarcodeError as exc:
+            # Not fatal: the user can still search by title and keep the barcode.
+            return BarcodeLookup(
+                barcode=barcode,
+                product_title=None,
+                title_guess=None,
+                match=None,
+                owned_count=0,
+                lookup_error=str(exc),
+            )
+        if product_title:
+            db.add(BarcodeProduct(barcode=barcode, product_title=product_title[:500]))
+            db.commit()
 
     return BarcodeLookup(
         barcode=barcode,

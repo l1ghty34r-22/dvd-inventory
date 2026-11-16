@@ -57,3 +57,16 @@ class InventoryItem(Base):
 
     owner: Mapped[User] = relationship(back_populates="items")
     movie: Mapped[Movie] = relationship(lazy="joined")
+
+
+class BarcodeProduct(Base):
+    """What the barcode database called a product, kept so each code is looked up only once.
+
+    Product names are public catalogue data, so the cache is shared by all users.
+    """
+
+    __tablename__ = "barcode_products"
+
+    barcode: Mapped[str] = mapped_column(String(13), primary_key=True)
+    product_title: Mapped[str] = mapped_column(String(500))
+    looked_up_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
