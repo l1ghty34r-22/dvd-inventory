@@ -1,7 +1,11 @@
 # DVD Inventory
 
-Keep track of your DVD collection. Log in, add films and TV shows by searching or scanning
-their barcode, search your shelf.
+Keep track of your DVD collection. Add films and TV shows by searching or scanning their barcode,
+see them on a shelf, click any case for the story and cast, and see stats on what you own.
+
+**Pages:** a home page explaining the app, a log-in page, and a dashboard with two tabs:
+*My collection* (headline stats, search, add, and the shelf) and *Profile* (films vs. shows,
+genres, decades, hours of film, and every title you own).
 
 **Stack:** FastAPI, SQLAlchemy, PostgreSQL, React, TypeScript, Vite, TanStack Query, Docker, GitHub Actions.
 
@@ -99,7 +103,7 @@ npm run build   # type-checks, then builds
 ```
 backend/
   app/
-    main.py          app setup, CORS, routers
+    main.py          app setup, CORS, routers, serves the built frontend
     config.py        settings from environment variables
     database.py      engine and session
     models.py        User, Movie, InventoryItem
@@ -114,8 +118,10 @@ frontend/
   src/
     api.ts           typed API client
     auth.tsx         login state
-    pages/           LoginPage, InventoryPage
-    components/      AddDvdDialog, BarcodeScanner, DvdCase, StatsLine
+    router.tsx       tiny history-based router (no dependency)
+    pages/           HomePage, LoginPage, DashboardPage, CollectionTab, ProfileTab
+    components/      SiteHeader, AddDvdDialog, BarcodeScanner, DvdCase, TitleDetailsDialog,
+                     StatTiles, BarList
 ```
 
 ## API
@@ -126,7 +132,9 @@ frontend/
 | POST | `/api/auth/login` | Get a JWT (OAuth2 password form) |
 | GET | `/api/auth/me` | Current user |
 | GET | `/api/inventory` | Your DVDs, with `q` (title or barcode), `limit`, `offset` |
-| GET | `/api/inventory/stats` | Totals, top genre, oldest and newest film |
+| GET | `/api/inventory/stats` | Totals (films, TV shows), top genre, oldest and newest |
+| GET | `/api/inventory/profile` | Full breakdown: genres, decades, hours of film, every title |
+| GET | `/api/inventory/{id}` | One disc, with description, cast and crew from TMDB |
 | POST | `/api/inventory` | Add a DVD (send `tmdb_id` and `media_type` to fill details from TMDB, optional `barcode`) |
 | PATCH | `/api/inventory/{id}` | Update condition, location, notes |
 | DELETE | `/api/inventory/{id}` | Remove a DVD |

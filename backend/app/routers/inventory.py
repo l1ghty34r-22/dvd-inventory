@@ -8,12 +8,18 @@ from app import barcodes, tmdb
 from app.deps import CurrentUser, DbSession
 from app.models import InventoryItem, Movie
 from app.schemas import (
+    CastMemberOut,
     FilmRef,
     InventoryItemCreate,
+    InventoryItemDetails,
     InventoryItemOut,
     InventoryItemUpdate,
     InventoryPage,
     InventoryStats,
+    NamedCount,
+    OwnedTitle,
+    ProfileStats,
+    TitleDetails,
 )
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
@@ -114,6 +120,14 @@ def stats(user: CurrentUser, db: DbSession) -> InventoryStats:
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     total = db.scalar(select(func.count(InventoryItem.id)).where(mine)) or 0
+    tv_shows = (
+        db.scalar(
+            select(func.count(InventoryItem.id))
+            .join(InventoryItem.movie)
+            .where(mine, Movie.media_type == "tv")
+        )
+        or 0
+    )
     added_this_month = (
         db.scalar(
             select(func.count(InventoryItem.id)).where(mine, InventoryItem.added_at >= month_start)
@@ -138,10 +152,63 @@ def stats(user: CurrentUser, db: DbSession) -> InventoryStats:
 
     return InventoryStats(
         total=total,
+        films=total - tv_shows,
+        tv_shows=tv_shows,
         added_this_month=added_this_month,
         top_genre=top_genre,
         oldest=FilmRef(title=oldest.title, year=oldest.year) if oldest else None,
         newest=FilmRef(title=newest.title, year=newest.year) if newest else None,
+    )
+
+
+@router.get("/profile", response_model=ProfileStats)
+def profile(user: CurrentUser, db: DbSession) -> ProfileStats:
+    """The whole collection broken down: films and shows, genres, decades, every title."""
+    rows = db.execute(
+        select(Movie, func.count(InventoryItem.id))
+        .join(InventoryItem, InventoryItem.movie_id == Movie.id)
+        .where(InventoryItem.user_id == user.id)
+        .group_by(Movie.id)
+        .order_by(func.lower(Movie.title), Movie.year)
+    ).all()
+
+    films: list[OwnedTitle] = []
+    shows: list[OwnedTitle] = []
+    genres: Counter[str] = Counter()
+    decades: Counter[int] = Counter()
+    film_minutes = 0
+    for movie, copies in rows:
+        owned = OwnedTitle(
+            movie_id=movie.id,
+            title=movie.title,
+            year=movie.year,
+            poster_url=movie.poster_url,
+            genres=movie.genres or [],
+            copies=copies,
+        )
+        (shows if movie.media_type == "tv" else films).append(owned)
+        genres.update(set(movie.genres or []))
+        if movie.year:
+            decades[movie.year // 10 * 10] += 1
+        if movie.media_type != "tv" and movie.runtime:
+            film_minutes += movie.runtime
+
+    return ProfileStats(
+        email=user.email,
+        member_since=user.created_at,
+        total_discs=sum(copies for _, copies in rows),
+        films=len(films),
+        tv_shows=len(shows),
+        film_minutes=film_minutes,
+        genres=[
+            NamedCount(name=name, count=count)
+            for name, count in sorted(genres.items(), key=lambda kv: (-kv[1], kv[0]))
+        ],
+        decades=[
+            NamedCount(name=f"{decade}s", count=decades[decade]) for decade in sorted(decades)
+        ],
+        film_titles=films,
+        tv_titles=shows,
     )
 
 
@@ -160,6 +227,37 @@ def add_item(payload: InventoryItemCreate, user: CurrentUser, db: DbSession) -> 
     db.commit()
     db.refresh(item)
     return item
+
+
+@router.get("/{item_id}", response_model=InventoryItemDetails)
+def get_item(item_id: int, user: CurrentUser, db: DbSession) -> InventoryItemDetails:
+    """One disc on the shelf, with the title's description, cast and crew from TMDB."""
+    item = _get_own_item(db, user.id, item_id)
+    movie = item.movie
+    result = InventoryItemDetails(item=InventoryItemOut.model_validate(item), details=None)
+    if movie.tmdb_id is None:
+        return result
+
+    try:
+        full = tmdb.get_details(movie.tmdb_id, movie.media_type)
+    except tmdb.TmdbNotConfiguredError:
+        result.details_error = "Details need a TMDB key on the server."
+        return result
+    except tmdb.TmdbError:
+        result.details_error = "Could not load details from TMDB. Try again in a moment."
+        return result
+
+    result.details = TitleDetails(
+        overview=full.overview,
+        tagline=full.tagline,
+        release_date=full.release_date,
+        cast=[CastMemberOut(**vars(member)) for member in full.cast],
+        crew_label=full.crew_label,
+        crew=full.crew,
+        seasons=full.seasons,
+        episodes=full.episodes,
+    )
+    return result
 
 
 @router.patch("/{item_id}", response_model=InventoryItemOut)

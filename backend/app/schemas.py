@@ -101,6 +101,8 @@ class FilmRef(BaseModel):
 
 class InventoryStats(BaseModel):
     total: int
+    films: int
+    tv_shows: int
     added_this_month: int
     top_genre: str | None
     oldest: FilmRef | None
@@ -116,3 +118,59 @@ class BarcodeLookup(BaseModel):
     # The title already on your shelf with this barcode, if any.
     match: MovieOut | None
     owned_count: int
+
+
+class NamedCount(BaseModel):
+    name: str
+    count: int
+
+
+class OwnedTitle(BaseModel):
+    """One title on the shelf, with how many copies of it the user has."""
+
+    movie_id: int
+    title: str
+    year: int | None
+    poster_url: str | None
+    genres: list[str]
+    copies: int
+
+
+class ProfileStats(BaseModel):
+    email: EmailStr
+    member_since: datetime
+    total_discs: int
+    films: int
+    tv_shows: int
+    # Summed over films that have a runtime from TMDB. TV runtimes are per episode, so skipped.
+    film_minutes: int
+    # Counted per title (not per copy), most common first.
+    genres: list[NamedCount]
+    # "1990s" and so on, oldest first. Titles without a year are left out.
+    decades: list[NamedCount]
+    film_titles: list[OwnedTitle]
+    tv_titles: list[OwnedTitle]
+
+
+class CastMemberOut(BaseModel):
+    name: str
+    character: str | None
+    photo_url: str | None
+
+
+class TitleDetails(BaseModel):
+    overview: str | None
+    tagline: str | None
+    release_date: str | None
+    cast: list[CastMemberOut]
+    crew_label: str
+    crew: list[str]
+    seasons: int | None
+    episodes: int | None
+
+
+class InventoryItemDetails(BaseModel):
+    item: InventoryItemOut
+    # None when the title was typed in by hand, or TMDB could not be reached.
+    details: TitleDetails | None
+    details_error: str | None = None

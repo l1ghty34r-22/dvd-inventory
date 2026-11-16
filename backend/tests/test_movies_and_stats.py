@@ -81,6 +81,8 @@ def test_add_from_tmdb_falls_back_when_tmdb_fails(client, auth_headers):
 def test_stats_for_empty_collection(client, auth_headers):
     assert client.get("/api/inventory/stats", headers=auth_headers).json() == {
         "total": 0,
+        "films": 0,
+        "tv_shows": 0,
         "added_this_month": 0,
         "top_genre": None,
         "oldest": None,

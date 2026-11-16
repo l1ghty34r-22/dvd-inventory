@@ -3,53 +3,51 @@ import type { CSSProperties } from "react";
 import type { InventoryItem } from "../api";
 
 /** A stable hue per title, so films without a poster still get their own cover colour. */
-function hueFor(title: string): number {
+export function hueFor(title: string): number {
   let hash = 0;
   for (const char of title) hash = (hash * 31 + char.charCodeAt(0)) % 360;
   return hash;
 }
 
-interface Props {
-  item: InventoryItem;
-  onRemove: (id: number) => void;
-  removing: boolean;
+export function CaseCover({ title, posterUrl }: { title: string; posterUrl: string | null }) {
+  return posterUrl ? (
+    <img src={posterUrl} alt="" loading="lazy" />
+  ) : (
+    <div className="case-blank" style={{ "--hue": hueFor(title) } as CSSProperties}>
+      {title}
+    </div>
+  );
 }
 
-export function DvdCase({ item, onRemove, removing }: Props) {
+interface Props {
+  item: InventoryItem;
+  onOpen: () => void;
+}
+
+/** One disc standing on the shelf. The whole case is a button that opens its details. */
+export function DvdCase({ item, onOpen }: Props) {
   const { movie } = item;
-  const details = [movie.year, movie.media_type === "tv" && "TV series", item.location]
-    .filter(Boolean)
-    .join(", ");
+  const kind = movie.media_type === "tv" ? "TV series" : null;
+  const details = [movie.year, kind].filter(Boolean).join(" · ");
 
   return (
     <li className="slot">
-      <div className="slot-ledge">
-        <div className="case">
-          {movie.poster_url ? (
-            <img src={movie.poster_url} alt="" loading="lazy" />
-          ) : (
-            <div
-              className="case-blank"
-              style={{ "--hue": hueFor(movie.title) } as CSSProperties}
-            >
-              {movie.title}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="slot-label">
-        <strong>{movie.title}</strong>
-        {details && <span className="muted">{details}</span>}
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => onRemove(item.id)}
-          disabled={removing}
-          aria-label={`Remove ${movie.title}`}
-        >
-          Remove
-        </button>
-      </div>
+      <button
+        type="button"
+        className="slot-button"
+        onClick={onOpen}
+        aria-label={`${movie.title}${movie.year ? ` (${movie.year})` : ""}: show details`}
+      >
+        <span className="slot-ledge">
+          <span className="case">
+            <CaseCover title={movie.title} posterUrl={movie.poster_url} />
+          </span>
+        </span>
+        <span className="slot-label">
+          <strong>{movie.title}</strong>
+          {details && <span className="muted">{details}</span>}
+        </span>
+      </button>
     </li>
   );
 }

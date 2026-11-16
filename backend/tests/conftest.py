@@ -52,7 +52,22 @@ def fake_tmdb(monkeypatch: pytest.MonkeyPatch) -> None:
     def search_titles(query: str, limit: int = 12) -> list[tmdb.TmdbTitle]:
         return [t for t in FAKE_TMDB.values() if query.lower() in t.title.lower()][:limit]
 
+    def get_details(tmdb_id: int, media_type: str = "movie") -> tmdb.TmdbDetails:
+        if (media_type, tmdb_id) not in FAKE_TMDB:
+            raise tmdb.TmdbError("not found")
+        return tmdb.TmdbDetails(
+            overview=f"About {FAKE_TMDB[(media_type, tmdb_id)].title}.",
+            tagline=None,
+            release_date="1999-03-31",
+            cast=[tmdb.CastMember(name="Keanu Reeves", character="Neo", photo_url=None)],
+            crew_label="Created by" if media_type == "tv" else "Directed by",
+            crew=["Lana Wachowski", "Lilly Wachowski"],
+            seasons=1 if media_type == "tv" else None,
+            episodes=9 if media_type == "tv" else None,
+        )
+
     monkeypatch.setattr(tmdb, "get_title", get_title)
+    monkeypatch.setattr(tmdb, "get_details", get_details)
     monkeypatch.setattr(tmdb, "search_titles", search_titles)
 
 

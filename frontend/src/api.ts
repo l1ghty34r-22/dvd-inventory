@@ -31,10 +31,40 @@ export interface FilmRef {
 
 export interface InventoryStats {
   total: number;
+  films: number;
+  tv_shows: number;
   added_this_month: number;
   top_genre: string | null;
   oldest: FilmRef | null;
   newest: FilmRef | null;
+}
+
+export interface NamedCount {
+  name: string;
+  count: number;
+}
+
+export interface OwnedTitle {
+  movie_id: number;
+  title: string;
+  year: number | null;
+  poster_url: string | null;
+  genres: string[];
+  copies: number;
+}
+
+export interface ProfileStats {
+  email: string;
+  member_since: string;
+  total_discs: number;
+  /** Counted per title, not per copy. */
+  films: number;
+  tv_shows: number;
+  film_minutes: number;
+  genres: NamedCount[];
+  decades: NamedCount[];
+  film_titles: OwnedTitle[];
+  tv_titles: OwnedTitle[];
 }
 
 export interface InventoryItem {
@@ -45,6 +75,30 @@ export interface InventoryItem {
   notes: string | null;
   added_at: string;
   movie: Movie;
+}
+
+export interface CastMember {
+  name: string;
+  character: string | null;
+  photo_url: string | null;
+}
+
+export interface TitleDetails {
+  overview: string | null;
+  tagline: string | null;
+  release_date: string | null;
+  cast: CastMember[];
+  /** "Directed by" or "Created by". */
+  crew_label: string;
+  crew: string[];
+  seasons: number | null;
+  episodes: number | null;
+}
+
+export interface InventoryItemDetails {
+  item: InventoryItem;
+  details: TitleDetails | null;
+  details_error: string | null;
 }
 
 export interface InventoryPage {
@@ -152,6 +206,8 @@ export const api = {
 
   stats: () => request<InventoryStats>("/inventory/stats"),
 
+  profile: () => request<ProfileStats>("/inventory/profile"),
+
   searchMovies: (q: string) =>
     request<MovieSearchResult[]>(`/movies/search?${new URLSearchParams({ q })}`),
 
@@ -159,6 +215,8 @@ export const api = {
     request<BarcodeLookup>(`/movies/barcode/${encodeURIComponent(code)}`),
 
   addItem: (item: NewInventoryItem) => request<InventoryItem>("/inventory", json("POST", item)),
+
+  getItem: (id: number) => request<InventoryItemDetails>(`/inventory/${id}`),
 
   deleteItem: (id: number) => request<void>(`/inventory/${id}`, { method: "DELETE" }),
 };

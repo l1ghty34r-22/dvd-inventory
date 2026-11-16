@@ -9,6 +9,8 @@ from app.config import settings
 
 API_BASE = "https://api.themoviedb.org/3"
 POSTER_BASE = "https://image.tmdb.org/t/p/w342"
+PHOTO_BASE = "https://image.tmdb.org/t/p/w185"
+CAST_LIMIT = 12
 
 MediaType = Literal["movie", "tv"]
 MEDIA_TYPES: tuple[MediaType, ...] = ("movie", "tv")
@@ -86,3 +88,68 @@ def search_titles(query: str, limit: int = 12) -> list[TmdbTitle]:
 
 def get_title(tmdb_id: int, media_type: MediaType = "movie") -> TmdbTitle:
     return _to_title(_get(f"/{media_type}/{tmdb_id}"), media_type)
+
+
+@dataclass
+class CastMember:
+    name: str
+    character: str | None
+    photo_url: str | None
+
+
+@dataclass
+class TmdbDetails:
+    """Everything shown on a title's detail panel."""
+
+    overview: str | None
+    tagline: str | None
+    release_date: str | None
+    cast: list[CastMember]
+    # "Directed by" names for films, "Created by" names for TV shows.
+    crew_label: str
+    crew: list[str]
+    seasons: int | None = None
+    episodes: int | None = None
+
+
+def _cast_member(person: dict) -> CastMember:
+    # TV "aggregate_credits" list every role a person played; films have one "character".
+    roles = person.get("roles") or []
+    character = person.get("character") or (roles[0].get("character") if roles else None)
+    photo = person.get("profile_path")
+    return CastMember(
+        name=person.get("name") or "",
+        character=character or None,
+        photo_url=f"{PHOTO_BASE}{photo}" if photo else None,
+    )
+
+
+def get_details(tmdb_id: int, media_type: MediaType = "movie") -> TmdbDetails:
+    credits_key = "aggregate_credits" if media_type == "tv" else "credits"
+    data = _get(f"/{media_type}/{tmdb_id}", {"append_to_response": credits_key})
+    credits = data.get(credits_key) or {}
+    cast = [_cast_member(person) for person in (credits.get("cast") or [])[:CAST_LIMIT]]
+
+    if media_type == "tv":
+        crew_label = "Created by"
+        crew = [person["name"] for person in data.get("created_by") or [] if person.get("name")]
+        release_date = data.get("first_air_date")
+    else:
+        crew_label = "Directed by"
+        crew = [
+            person["name"]
+            for person in credits.get("crew") or []
+            if person.get("job") == "Director" and person.get("name")
+        ]
+        release_date = data.get("release_date")
+
+    return TmdbDetails(
+        overview=data.get("overview") or None,
+        tagline=data.get("tagline") or None,
+        release_date=release_date or None,
+        cast=[member for member in cast if member.name],
+        crew_label=crew_label,
+        crew=list(dict.fromkeys(crew)),  # Drop duplicates, keep order.
+        seasons=data.get("number_of_seasons") if media_type == "tv" else None,
+        episodes=data.get("number_of_episodes") if media_type == "tv" else None,
+    )
