@@ -156,3 +156,15 @@ def pick_best(product_title: str, title_guess: str, results: list[Any]) -> Any |
         return points
 
     return max(enumerate(results), key=score)[1]
+
+
+def guess_format(product_title: str) -> str | None:
+    """Read the disc format from a shop's product name, or None when it does not say."""
+    name = product_title.lower()
+    if re.search(r"\b(4k|uhd|ultra\s*hd)\b", name):
+        return "uhd"
+    if re.search(r"blu[\s-]?ray", name):
+        return "bluray"
+    if re.search(r"\bdvd\b", name):
+        return "dvd"
+    return None

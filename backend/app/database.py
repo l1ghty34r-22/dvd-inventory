@@ -52,6 +52,13 @@ def upgrade_schema(bind: Engine) -> None:
                 conn.execute(
                     text("CREATE INDEX ix_inventory_items_barcode ON inventory_items (barcode)")
                 )
+            if "format" not in columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE inventory_items ADD COLUMN format VARCHAR(10) "
+                        "NOT NULL DEFAULT 'dvd'"
+                    )
+                )
 
 
 def get_db() -> Iterator[Session]:

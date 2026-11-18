@@ -24,6 +24,8 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
+FORMAT_NAMES = {"dvd": "DVD", "bluray": "Blu-ray", "uhd": "4K Ultra HD"}
+
 
 def _find_or_create_movie(db: DbSession, payload: InventoryItemCreate) -> Movie:
     if payload.tmdb_id is not None:
@@ -193,6 +195,14 @@ def profile(user: CurrentUser, db: DbSession) -> ProfileStats:
         if movie.media_type != "tv" and movie.runtime:
             film_minutes += movie.runtime
 
+    format_counts = dict(
+        db.execute(
+            select(InventoryItem.format, func.count(InventoryItem.id))
+            .where(InventoryItem.user_id == user.id)
+            .group_by(InventoryItem.format)
+        ).all()
+    )
+
     return ProfileStats(
         email=user.email,
         member_since=user.created_at,
@@ -207,6 +217,11 @@ def profile(user: CurrentUser, db: DbSession) -> ProfileStats:
         decades=[
             NamedCount(name=f"{decade}s", count=decades[decade]) for decade in sorted(decades)
         ],
+        formats=[
+            NamedCount(name=name, count=format_counts[key])
+            for key, name in FORMAT_NAMES.items()
+            if format_counts.get(key)
+        ],
         film_titles=films,
         tv_titles=shows,
     )
@@ -219,6 +234,7 @@ def add_item(payload: InventoryItemCreate, user: CurrentUser, db: DbSession) -> 
         user_id=user.id,
         movie_id=movie.id,
         barcode=payload.barcode,
+        format=payload.format,
         condition=payload.condition,
         location=payload.location,
         notes=payload.notes,
@@ -266,6 +282,8 @@ def update_item(
 ) -> InventoryItem:
     item = _get_own_item(db, user.id, item_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
+        if field == "format" and value is None:
+            continue  # A disc always has a format; null means "leave it".
         setattr(item, field, value)
     db.commit()
     db.refresh(item)

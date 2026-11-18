@@ -82,6 +82,7 @@ def lookup_barcode(code: str, user: CurrentUser, db: DbSession) -> BarcodeLookup
             title_guess=movie.title,
             match=MovieOut.model_validate(movie),
             owned_count=owned_count,
+            format_guess=item.format,
             best_match=MovieSearchResult(
                 tmdb_id=movie.tmdb_id,
                 media_type=movie.media_type,
@@ -120,6 +121,7 @@ def lookup_barcode(code: str, user: CurrentUser, db: DbSession) -> BarcodeLookup
             title_guess=barcodes.clean_title(product_title) if product_title else None,
             match=None,
             owned_count=0,
+            format_guess=barcodes.guess_format(product_title) if product_title else None,
         )
     )
 

@@ -9,15 +9,15 @@ def test_profile_for_empty_collection(client, auth_headers):
     assert body["email"] == "uros@example.com"
     assert body["total_discs"] == 0
     assert body["films"] == body["tv_shows"] == body["film_minutes"] == 0
-    assert body["genres"] == body["decades"] == []
+    assert body["genres"] == body["decades"] == body["formats"] == []
     assert body["film_titles"] == body["tv_titles"] == []
 
 
 def test_profile_breaks_down_the_collection(client, auth_headers):
     for item in [
         {"title": "The Matrix", "tmdb_id": 603},
-        {"title": "The Matrix", "tmdb_id": 603},  # a second copy
-        {"title": "Heat", "tmdb_id": 949},
+        {"title": "The Matrix", "tmdb_id": 603, "format": "uhd"},  # a second copy, in 4K
+        {"title": "Heat", "tmdb_id": 949, "format": "bluray"},
         {"title": "x", "tmdb_id": 949, "media_type": "tv"},
         {"title": "Home video"},
     ]:
@@ -31,6 +31,11 @@ def test_profile_breaks_down_the_collection(client, auth_headers):
     assert body["film_minutes"] == 306
     assert body["genres"][0] == {"name": "Action", "count": 2}
     assert {"name": "Animation", "count": 1} in body["genres"]
+    assert body["formats"] == [
+        {"name": "DVD", "count": 3},
+        {"name": "Blu-ray", "count": 1},
+        {"name": "4K Ultra HD", "count": 1},
+    ]
     assert body["decades"] == [{"name": "1990s", "count": 2}, {"name": "2000s", "count": 1}]
     assert [(t["title"], t["copies"]) for t in body["film_titles"]] == [
         ("Heat", 1),
@@ -109,3 +114,27 @@ def test_item_details_are_private(client, auth_headers):
     item = client.post("/api/inventory", json={"title": "Se7en"}, headers=auth_headers).json()
     other = register_and_login(client, "other@example.com")
     assert client.get(f"/api/inventory/{item['id']}", headers=other).status_code == 404
+
+
+def test_format_defaults_to_dvd_and_can_be_changed(client, auth_headers):
+    item = client.post("/api/inventory", json={"title": "Heat"}, headers=auth_headers).json()
+    assert item["format"] == "dvd"
+    response = client.patch(
+        f"/api/inventory/{item['id']}", json={"format": "bluray"}, headers=auth_headers
+    )
+    assert response.json()["format"] == "bluray"
+    bad = client.post(
+        "/api/inventory", json={"title": "Heat", "format": "vhs"}, headers=auth_headers
+    )
+    assert bad.status_code == 422
+
+
+def test_patching_format_to_null_keeps_it(client, auth_headers):
+    item = client.post(
+        "/api/inventory", json={"title": "Heat", "format": "uhd"}, headers=auth_headers
+    ).json()
+    response = client.patch(
+        f"/api/inventory/{item['id']}", json={"format": None}, headers=auth_headers
+    )
+    assert response.status_code == 200
+    assert response.json()["format"] == "uhd"

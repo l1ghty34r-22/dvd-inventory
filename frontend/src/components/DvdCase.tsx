@@ -1,6 +1,16 @@
 import type { CSSProperties } from "react";
 
-import type { InventoryItem } from "../api";
+import type { DiscFormat, InventoryItem } from "../api";
+
+/** The coloured band across the top of Blu-ray and 4K cases. DVDs have none. */
+export function FormatBand({ format }: { format: DiscFormat }) {
+  if (format === "dvd") return null;
+  return (
+    <span className={`format-band format-${format}`} aria-hidden="true">
+      {format === "uhd" ? "4K Ultra HD" : "Blu-ray"}
+    </span>
+  );
+}
 
 /** A stable hue per title, so films without a poster still get their own cover colour. */
 export function hueFor(title: string): number {
@@ -28,7 +38,8 @@ interface Props {
 export function DvdCase({ item, onOpen }: Props) {
   const { movie } = item;
   const kind = movie.media_type === "tv" ? "TV series" : null;
-  const details = [movie.year, kind].filter(Boolean).join(" · ");
+  const formatName = item.format === "uhd" ? "4K" : item.format === "bluray" ? "Blu-ray" : null;
+  const details = [movie.year, kind, formatName].filter(Boolean).join(" · ");
 
   return (
     <li className="slot">
@@ -40,6 +51,7 @@ export function DvdCase({ item, onOpen }: Props) {
       >
         <span className="slot-ledge">
           <span className="case">
+            <FormatBand format={item.format} />
             <CaseCover title={movie.title} posterUrl={movie.poster_url} />
           </span>
         </span>

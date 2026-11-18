@@ -99,7 +99,8 @@ label {
   color: var(--muted);
 }
 
-input {
+input,
+select {
   display: block;
   width: 100%;
   margin-top: 0.3rem;
@@ -111,7 +112,17 @@ input {
   border-radius: 8px;
 }
 
-input:focus {
+select {
+  appearance: none;
+  padding-right: 2.2rem;
+  background: var(--bg)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235d6070' stroke-width='1.6'/%3E%3C/svg%3E")
+    no-repeat right 0.85rem center;
+  cursor: pointer;
+}
+
+input:focus,
+select:focus {
   border-color: var(--accent);
   outline: 2px solid var(--accent-soft);
   outline-offset: 0;
@@ -731,15 +742,104 @@ button:disabled {
 }
 
 .add-dialog {
-  width: min(42rem, calc(100vw - 2rem));
+  width: min(64rem, calc(100vw - 2rem));
+  padding: 0;
+}
+
+/* Two columns: the search (or a title's page) on the left, your copy and the buttons on the right. */
+.add-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17rem;
+  grid-template-areas:
+    "head head"
+    "main side";
+}
+
+.add-head {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.add-head .close-button {
+  position: static;
+}
+
+.add-main {
+  grid-area: main;
+  min-width: 0;
   padding: 1.5rem;
 }
 
-.add-dialog-head {
+.add-side {
+  grid-area: side;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
+  flex-direction: column;
+  gap: 0.9rem;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+}
+
+.add-side h3 {
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.side-note {
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.side-status:empty {
+  display: none;
+}
+
+.side-status p {
+  font-size: 0.9rem;
+}
+
+.side-actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.side-done {
+  width: 100%;
+}
+
+.add-results {
+  margin-top: 1.25rem;
+}
+
+/* Blu-ray and 4K cases have a coloured band across the top, like the real thing. */
+.format-band {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  padding: 0.15rem 0 0.1rem 0.6rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.format-bluray {
+  background: #1458c8;
+}
+
+.format-uhd {
+  background: #111;
+  border-bottom: 2px solid #c9a227;
 }
 
 .add-dialog-fields {
@@ -794,37 +894,52 @@ button.results-title:hover strong {
   text-underline-offset: 3px;
 }
 
-/* Barcode: scan or type, above the title search */
+/* Title search with the barcode button beside it */
 
-.barcode {
-  margin-bottom: 1.25rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--line);
-}
-
-.barcode-row {
+.search-row {
   display: flex;
-  gap: 0.6rem;
-}
-
-.barcode-row input {
-  margin-top: 0;
-  min-width: 0;
-}
-
-.barcode-status {
-  display: grid;
-  justify-items: start;
   gap: 0.5rem;
-  margin-top: 0.9rem;
-  padding: 0.8rem 0.9rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  margin-top: 0.3rem;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.9rem;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid #cfd2da;
   border-radius: 8px;
 }
 
-.barcode > div > p {
+.icon-button svg {
+  fill: currentColor;
+}
+
+.icon-button:hover {
+  background: var(--surface);
+}
+
+.icon-button.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.scanner-slot {
+  margin-top: 1rem;
+}
+
+.barcode-messages p {
   margin-top: 0.75rem;
+  font-size: 0.9rem;
 }
 
 .scanner {
@@ -1001,6 +1116,98 @@ button.results-title:hover strong {
   border-top: 1px solid var(--line);
 }
 
+/* Phones: keep the search on the left and your copy on the right, just tighter. */
+@media (max-width: 760px) {
+  .add-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 34%);
+  }
+
+  .add-head {
+    padding: 0.8rem 1rem;
+  }
+
+  .add-main {
+    padding: 1rem 0.85rem;
+  }
+
+  .add-side {
+    gap: 0.7rem;
+    padding: 1rem 0.75rem;
+  }
+
+  .add-side label {
+    font-size: 0.8rem;
+  }
+
+  .add-side input,
+  .add-side select {
+    padding: 0.5rem 0.55rem;
+    font-size: 0.85rem;
+  }
+
+  .add-side select {
+    padding-right: 1.6rem;
+    background-position: right 0.5rem center;
+  }
+
+  .add-side .button {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .side-note,
+  .side-status p {
+    font-size: 0.78rem;
+  }
+
+  .add-main .results li {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 0.5rem;
+  }
+
+  .add-main .results img,
+  .add-main .results-noposter {
+    width: 32px;
+    height: 48px;
+  }
+
+  .add-main .results-title {
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+  }
+
+  .add-main .results .secondary,
+  .add-main .results .text-button {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.82rem;
+  }
+
+  .add-main .search-row input {
+    font-size: 0.9rem;
+  }
+
+  .add-main .details-top {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .add-main .details-cover {
+    width: 96px;
+  }
+
+  .add-main .details-heading {
+    padding-right: 0;
+  }
+
+  .add-main .details-heading h2 {
+    font-size: 1.15rem;
+  }
+
+  .add-main .cast {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  }
+}
+
 @media (max-width: 560px) {
   .header-email {
     display: none;
@@ -1012,14 +1219,6 @@ button.results-title:hover strong {
 
   .profile-grid {
     grid-template-columns: 1fr;
-  }
-
-  .barcode-row {
-    flex-wrap: wrap;
-  }
-
-  .barcode-row > .secondary:first-child {
-    flex-basis: 100%;
   }
 
   .details {
@@ -1088,4 +1287,10 @@ button.results-title:hover strong {
 
 .preview-others .results {
   margin-top: 0.5rem;
+}
+
+.add-side .button {
+  width: 100%;
+  white-space: normal;
+  text-align: center;
 }

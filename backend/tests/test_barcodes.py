@@ -60,6 +60,7 @@ def test_lookup_unknown_barcode(client, auth_headers):
         "lookup_error": None,
         "best_match": None,
         "candidates": [],
+        "format_guess": None,
     }
 
 
@@ -177,7 +178,8 @@ def test_upgrade_schema_from_first_release(tmp_path):
     indexes = {index["name"]: index for index in inspector.get_indexes("movies")}
     assert not indexes["ix_movies_tmdb_id"]["unique"]
     assert indexes["uq_movies_media_tmdb"]["unique"]
-    assert "barcode" in {c["name"] for c in inspector.get_columns("inventory_items")}
+    item_columns = {c["name"] for c in inspector.get_columns("inventory_items")}
+    assert {"barcode", "format"} <= item_columns
     with engine.begin() as conn:
         assert conn.execute(text("SELECT media_type FROM movies")).scalar_one() == "movie"
         # A TV show can now share Heat's TMDB id.
@@ -259,3 +261,23 @@ def test_title_preview_errors(client, auth_headers):
     assert client.get("/api/movies/podcast/1", headers=auth_headers).status_code == 422
     assert client.get("/api/movies/movie/123456", headers=auth_headers).status_code == 502
     assert client.get("/api/movies/movie/603").status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("product", "expected"),
+    [
+        ("Heat (DVD, 1995, Widescreen)", "dvd"),
+        ("The Matrix [Blu-ray] [1999]", "bluray"),
+        ("Dune 4K Ultra HD + Blu-ray", "uhd"),
+        ("Alien (UHD)", "uhd"),
+        ("Fight Club", None),
+    ],
+)
+def test_guess_format(product, expected):
+    assert barcodes.guess_format(product) == expected
+
+
+def test_scan_suggests_the_format(client, auth_headers, fake_barcodes):
+    fake_barcodes[HEAT_EAN] = "Heat [Blu-ray] [1995]"
+    body = client.get(f"/api/movies/barcode/{HEAT_UPC}", headers=auth_headers).json()
+    assert body["format_guess"] == "bluray"

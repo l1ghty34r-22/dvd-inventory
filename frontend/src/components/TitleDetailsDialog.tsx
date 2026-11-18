@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { api } from "../api";
+import { api, FORMAT_LABELS } from "../api";
 import type { InventoryItemDetails } from "../api";
 import { TitleBody, TitleHeader } from "./TitleInfo";
 
@@ -76,6 +76,7 @@ function DetailsContent({ data, onClose }: { data: InventoryItemDetails; onClose
   });
 
   const copy: [string, string][] = [
+    ["Format", FORMAT_LABELS[item.format]],
     ["Where it is", item.location ?? "Not set"],
     ["Condition", item.condition ?? "Not set"],
     ["Barcode", item.barcode ?? "None saved"],

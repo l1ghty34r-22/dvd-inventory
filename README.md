@@ -42,6 +42,10 @@ product, TV if the name mentions a season) and opens that title's page: story, c
 **Add to my collection**. If it guessed wrong, **Not this one?** lists the other matches. The
 barcode is saved with the disc, so scanning it again shows that you already own it.
 
+Each disc also records its **format**: DVD, Blu-ray, or 4K Ultra HD Blu-ray, picked in the
+Add dialog's "Your copy" panel (pre-selected when the product name says "Blu-ray" or "4K").
+Blu-ray and 4K cases get a coloured band on the shelf, and the profile counts discs per format.
+
 Product names are cached, so each barcode is looked up once. If the lookup service is
 unavailable, you type the title instead and the barcode is still saved.
 

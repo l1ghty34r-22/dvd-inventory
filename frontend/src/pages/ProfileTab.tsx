@@ -107,6 +107,12 @@ export function ProfileTab() {
             </section>
 
             <section className="panel">
+              <h2>Formats</h2>
+              <p className="muted panel-note">Discs per format.</p>
+              <BarList rows={p.formats} unit="disc" label="Discs per format" />
+            </section>
+
+            <section className="panel">
               <h2>Decades</h2>
               <p className="muted panel-note">Titles by the decade they came out.</p>
               {p.decades.length === 0 ? (

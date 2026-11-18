@@ -50,6 +50,8 @@ class InventoryItem(Base):
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), index=True)
     # EAN-13 / EAN-8 digits, when the disc was scanned or the code typed in.
     barcode: Mapped[str | None] = mapped_column(String(13), index=True)
+    # "dvd", "bluray" or "uhd" (4K Ultra HD Blu-ray).
+    format: Mapped[str] = mapped_column(String(10), default="dvd", server_default="dvd")
     condition: Mapped[str | None] = mapped_column(String(50))
     location: Mapped[str | None] = mapped_column(String(100))
     notes: Mapped[str | None] = mapped_column(Text)

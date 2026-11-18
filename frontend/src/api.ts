@@ -5,6 +5,14 @@ export interface User {
 
 export type MediaType = "movie" | "tv";
 
+export type DiscFormat = "dvd" | "bluray" | "uhd";
+
+export const FORMAT_LABELS: Record<DiscFormat, string> = {
+  dvd: "DVD",
+  bluray: "Blu-ray",
+  uhd: "4K Ultra HD Blu-ray",
+};
+
 export interface Movie {
   id: number;
   media_type: MediaType;
@@ -63,6 +71,8 @@ export interface ProfileStats {
   film_minutes: number;
   genres: NamedCount[];
   decades: NamedCount[];
+  /** Discs per format, formats with none left out. */
+  formats: NamedCount[];
   film_titles: OwnedTitle[];
   tv_titles: OwnedTitle[];
 }
@@ -70,6 +80,7 @@ export interface ProfileStats {
 export interface InventoryItem {
   id: number;
   barcode: string | null;
+  format: DiscFormat;
   condition: string | null;
   location: string | null;
   notes: string | null;
@@ -113,6 +124,7 @@ export interface NewInventoryItem {
   media_type?: MediaType;
   poster_url?: string | null;
   barcode?: string | null;
+  format?: DiscFormat;
   condition?: string | null;
   location?: string | null;
   notes?: string | null;
@@ -129,6 +141,8 @@ export interface BarcodeLookup {
   owned_count: number;
   /** Set when the barcode database could not be asked; the barcode can still be saved. */
   lookup_error: string | null;
+  /** Read from the product name, or the format of the copy you already own. */
+  format_guess: DiscFormat | null;
   /** The title this barcode most likely is. */
   best_match: MovieSearchResult | null;
   /** Other plausible titles, for "Not this one?". */

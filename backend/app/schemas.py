@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from app import barcodes
 
 MediaType = Literal["movie", "tv"]
+# DVD, Blu-ray, or 4K Ultra HD Blu-ray.
+DiscFormat = Literal["dvd", "bluray", "uhd"]
 
 
 class UserCreate(BaseModel):
@@ -61,6 +63,7 @@ class InventoryItemCreate(BaseModel):
     media_type: MediaType = "movie"
     poster_url: str | None = Field(default=None, max_length=500)
     barcode: str | None = None
+    format: DiscFormat = "dvd"
     condition: str | None = Field(default=None, max_length=50)
     location: str | None = Field(default=None, max_length=100)
     notes: str | None = None
@@ -72,6 +75,7 @@ class InventoryItemCreate(BaseModel):
 
 
 class InventoryItemUpdate(BaseModel):
+    format: DiscFormat | None = None
     condition: str | None = Field(default=None, max_length=50)
     location: str | None = Field(default=None, max_length=100)
     notes: str | None = None
@@ -82,6 +86,7 @@ class InventoryItemOut(BaseModel):
 
     id: int
     barcode: str | None
+    format: DiscFormat
     condition: str | None
     location: str | None
     notes: str | None
@@ -121,6 +126,8 @@ class BarcodeLookup(BaseModel):
     # Set when the barcode database could not be asked (daily limit, outage). The barcode is
     # still valid and can be saved with whatever title the user picks.
     lookup_error: str | None = None
+    # Read from the product name ("[Blu-ray]", "4K"), or the format of the copy you own.
+    format_guess: DiscFormat | None = None
     # The title the barcode most likely is, and other plausible matches to choose from.
     best_match: MovieSearchResult | None = None
     candidates: list[MovieSearchResult] = []
@@ -154,6 +161,8 @@ class ProfileStats(BaseModel):
     genres: list[NamedCount]
     # "1990s" and so on, oldest first. Titles without a year are left out.
     decades: list[NamedCount]
+    # Discs per format ("DVD", "Blu-ray", "4K Ultra HD"), formats you own none of left out.
+    formats: list[NamedCount]
     film_titles: list[OwnedTitle]
     tv_titles: list[OwnedTitle]
 
