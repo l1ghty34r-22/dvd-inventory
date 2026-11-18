@@ -112,6 +112,13 @@ export interface InventoryItemDetails {
   details_error: string | null;
 }
 
+/** The parts of a disc you can change after adding it. */
+export interface InventoryItemChanges {
+  format?: DiscFormat;
+  location?: string | null;
+  condition?: string | null;
+}
+
 export interface InventoryPage {
   items: InventoryItem[];
   total: number;
@@ -257,6 +264,9 @@ export const api = {
     request<TitlePreview>(`/movies/${mediaType}/${tmdbId}`),
 
   addItem: (item: NewInventoryItem) => request<InventoryItem>("/inventory", json("POST", item)),
+
+  updateItem: (id: number, changes: InventoryItemChanges) =>
+    request<InventoryItem>(`/inventory/${id}`, json("PATCH", changes)),
 
   getItem: (id: number) => request<InventoryItemDetails>(`/inventory/${id}`),
 

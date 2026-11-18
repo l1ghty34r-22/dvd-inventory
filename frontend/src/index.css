@@ -1148,8 +1148,11 @@ button.results-title:hover strong {
   color: var(--muted);
 }
 
+/* Each section (Your copy, Story, Cast) is divided from the one above by a line. */
 .details-section {
-  margin-top: 1.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
 }
 
 .details-section h3 {
@@ -1194,31 +1197,30 @@ button.results-title:hover strong {
   color: var(--faint);
 }
 
-.copy-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.75rem;
-  margin: 0 0 0.75rem;
-}
 
-.copy-facts dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
 
-.copy-facts dd {
-  margin: 0.1rem 0 0;
-  overflow-wrap: anywhere;
-}
-
+/* Remove from shelf, under the title's facts. */
 .details-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 1.75rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line);
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.details-actions .error {
+  flex-basis: 100%;
+}
+
+.remove-button {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+  color: var(--danger);
+  border-color: #f3c4bf;
+}
+
+.remove-button:hover:not(:disabled) {
+  background: var(--danger-soft);
 }
 
 /* Phones: keep the search on the left and your copy on the right, just tighter. */
@@ -1640,5 +1642,174 @@ button.results-title:hover strong {
 @media (prefers-reduced-motion: reduce) {
   .add-icon-button svg {
     transition: none;
+  }
+}
+
+/* The poster in a disc's details glows in its format's colour: blue for Blu-ray, black for 4K. */
+.details-cover.glow-bluray {
+  box-shadow:
+    0 0 0 3px #1458c8,
+    0 10px 34px 6px #1458c88c;
+}
+
+.details-cover.glow-uhd {
+  box-shadow:
+    0 0 0 3px #111,
+    0 10px 34px 6px #000000a6;
+}
+
+/* Format ribbon across the poster's top-left corner in a disc's details. */
+.format-ribbon {
+  position: absolute;
+  top: 16px;
+  left: -36px;
+  z-index: 3;
+  width: 130px;
+  padding: 0.22rem 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px #0006;
+  pointer-events: none;
+}
+
+.ribbon-dvd {
+  color: #2b2d36;
+  background: linear-gradient(#f3f4f6, #c9ccd4);
+}
+
+.ribbon-bluray {
+  color: #fff;
+  background: linear-gradient(#2a74e8, #1458c8);
+}
+
+.ribbon-uhd {
+  color: #e8c35a;
+  background: linear-gradient(#2a2a2a, #050505);
+  border-top: 1px solid #c9a227;
+  border-bottom: 1px solid #c9a227;
+}
+
+/* Poster column in a disc's details: the poster, with Remove from shelf right under it. */
+.details-cover-col {
+  display: grid;
+  align-content: start;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.details-cover-col .details-actions {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0;
+}
+
+.details-cover-col .details-actions > span {
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.details-cover-col .details-actions .button {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  white-space: normal;
+}
+
+@media (max-width: 560px) {
+  /* Two facts per row, so "Your copy" stays short now that it sits near the top. */
+}
+
+
+/* Your copy: live fields (they save themselves), the date added, and the bin. */
+.copy-fields {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, 1fr) minmax(0, 1.4fr) minmax(8rem, 1fr) auto auto;
+  gap: 0.9rem;
+  align-items: end;
+}
+
+.copy-added {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.copy-added-label {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.copy-added > span:last-child {
+  padding: 0.7rem 0;
+  font-size: 1rem;
+}
+
+.copy-bin.confirming {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.bin-button {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  color: var(--danger);
+  background: var(--bg);
+  border: 1px solid #f3c4bf;
+  border-radius: 8px;
+}
+
+.bin-button:hover {
+  background: var(--danger-soft);
+}
+
+.bin-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.bin-confirm .button {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.copy-status {
+  min-height: 1.25rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* Phones: Format and Condition side by side, Where it is full width, then Added and the bin.
+   (After the main .copy-fields rule, so it wins.) */
+@media (max-width: 560px) {
+  .copy-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .copy-fields > label:nth-child(2) {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .copy-fields > label:nth-child(3) {
+    order: 2;
+  }
+
+  .copy-added {
+    order: 4;
+  }
+
+  .copy-bin {
+    order: 5;
+    justify-self: end;
   }
 }

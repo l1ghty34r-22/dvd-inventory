@@ -1,4 +1,4 @@
-import type { MediaType, TitleDetails } from "../api";
+import type { DiscFormat, MediaType, TitleDetails } from "../api";
 import { CaseCover } from "./DvdCase";
 
 export function formatRuntime(minutes: number): string {
@@ -17,8 +17,26 @@ export interface TitleBasics {
   runtime: number | null;
 }
 
-/** Cover, title, facts, genres, tagline and director/creators. */
-export function TitleHeader({ title, details }: { title: TitleBasics; details: TitleDetails | null }) {
+/**
+ * Cover, title, facts, genres, tagline and director/creators. With `format` (a disc you own),
+ * Blu-ray covers glow blue and 4K covers glow black; DVDs keep the plain shadow.
+ */
+const RIBBON_TEXT: Record<DiscFormat, string> = { dvd: "DVD", bluray: "Blu-ray", uhd: "4K UHD" };
+
+/** A diagonal ribbon across the poster's top-left corner, naming the disc's format. */
+function FormatRibbon({ format }: { format: DiscFormat }) {
+  return <span className={`format-ribbon ribbon-${format}`}>{RIBBON_TEXT[format]}</span>;
+}
+
+export function TitleHeader({
+  title,
+  details,
+  format,
+}: {
+  title: TitleBasics;
+  details: TitleDetails | null;
+  format?: DiscFormat;
+}) {
   const isTv = title.media_type === "tv";
   const facts = [
     title.year,
@@ -31,8 +49,11 @@ export function TitleHeader({ title, details }: { title: TitleBasics; details: T
 
   return (
     <div className="details-top">
-      <div className="case details-cover">
-        <CaseCover title={title.title} posterUrl={title.poster_url} />
+      <div className="details-cover-col">
+        <div className={format ? `case details-cover glow-${format}` : "case details-cover"}>
+          {format && <FormatRibbon format={format} />}
+          <CaseCover title={title.title} posterUrl={title.poster_url} />
+        </div>
       </div>
       <div className="details-heading">
         <h2>{title.title}</h2>
