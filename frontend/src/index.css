@@ -1923,3 +1923,18 @@ button.results-title:hover strong {
     justify-self: end;
   }
 }
+
+/* Log-in: "No account found" with a way to sign up. */
+.auth-notice {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.92rem;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  border-radius: 10px;
+}
+
+.auth-notice .button {
+  width: 100%;
+}

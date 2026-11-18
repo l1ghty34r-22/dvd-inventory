@@ -14,7 +14,10 @@ const PERKS = [
 /** Create an account: its own page, wider than log in, with what you get on the left. */
 export function SignupPage() {
   const { register } = useAuth();
-  const [email, setEmail] = useState("");
+  // Arriving from "No account found" on the log-in page brings the email along.
+  const [email, setEmail] = useState(
+    () => new URLSearchParams(window.location.search).get("email") ?? "",
+  );
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);

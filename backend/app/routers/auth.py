@@ -27,10 +27,17 @@ def register(payload: UserCreate, db: DbSession) -> User:
 def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], db: DbSession) -> Token:
     # The OAuth2 form calls the field "username"; we use the email there.
     user = db.scalar(select(User).where(User.email == form.username.lower()))
-    if user is None or not verify_password(form.password, user.password_hash):
+    if user is None:
+        # Say so plainly so the page can point people to sign-up. Registering already reveals
+        # whether an email is taken, so this gives nothing extra away.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found for that email",
+        )
+    if not verify_password(form.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return Token(access_token=create_access_token(user.id))

@@ -39,3 +39,20 @@ def test_me_requires_valid_token(client):
     assert client.get("/api/auth/me").status_code == 401
     bad = {"Authorization": "Bearer not-a-real-token"}
     assert client.get("/api/auth/me", headers=bad).status_code == 401
+
+
+def test_login_unknown_email(client):
+    response = client.post(
+        "/api/auth/login", data={"username": "nobody@example.com", "password": "whatever-pass"}
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No account found for that email"
+
+
+def test_login_wrong_password_message(client):
+    register_and_login(client, "pw@example.com")
+    response = client.post(
+        "/api/auth/login", data={"username": "PW@example.com", "password": "not-the-password"}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect password"
