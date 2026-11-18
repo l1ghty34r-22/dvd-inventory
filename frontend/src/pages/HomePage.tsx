@@ -25,7 +25,7 @@ export function HomePage() {
         <p className="eyebrow">Your DVD and TV box sets, catalogued</p>
         <h1>Every disc you own, on one shelf.</h1>
         <p className="lede">
-          DVD Inventory keeps track of the films and TV shows you own on disc. Add them by searching
+          NeverDisc keeps track of the films and TV shows you own on disc. Add them by searching
           or scanning the barcode, find any of them in seconds, and see what your collection says
           about your taste.
         </p>

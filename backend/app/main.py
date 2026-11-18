@@ -21,7 +21,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="DVD Inventory API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="NeverDisc API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

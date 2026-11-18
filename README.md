@@ -1,4 +1,4 @@
-# DVD Inventory
+# NeverDisc
 
 Keep track of your DVD collection. Add films and TV shows by searching or scanning their barcode,
 see them on a shelf, click any case for the story and cast, and see stats on what you own.

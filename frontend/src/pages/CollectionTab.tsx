@@ -9,8 +9,7 @@ import { TitleDetailsDialog } from "../components/TitleDetailsDialog";
 
 export function CollectionTab() {
   const [search, setSearch] = useState("");
-  // Which way the Add dialog opens: with the title search, or with the camera on.
-  const [adding, setAdding] = useState<false | "search" | "scan">(false);
+  const [adding, setAdding] = useState(false);
   const [openItemId, setOpenItemId] = useState<number | null>(null);
 
   const stats = useQuery({ queryKey: ["inventory", "stats"], queryFn: api.stats });
@@ -27,17 +26,12 @@ export function CollectionTab() {
     <>
       <div className="section-head">
         <div>
-          <h1>My collection</h1>
+          <h1>Collection</h1>
           <p className="muted">Click a case to see the story, cast and your copy's details.</p>
         </div>
-        <div className="section-actions">
-          <button type="button" className="button secondary" onClick={() => setAdding("scan")}>
-            Scan barcode
-          </button>
-          <button type="button" className="button primary" onClick={() => setAdding("search")}>
-            Add a DVD
-          </button>
-        </div>
+        <button type="button" className="button primary" onClick={() => setAdding(true)}>
+          Add a DVD
+        </button>
       </div>
 
       {stats.data && (
@@ -60,11 +54,8 @@ export function CollectionTab() {
             cover and all.
           </p>
           <div className="empty-actions">
-            <button type="button" className="button primary" onClick={() => setAdding("search")}>
+            <button type="button" className="button primary" onClick={() => setAdding(true)}>
               Add your first DVD
-            </button>
-            <button type="button" className="button secondary" onClick={() => setAdding("scan")}>
-              Scan a barcode
             </button>
           </div>
         </section>
@@ -102,11 +93,7 @@ export function CollectionTab() {
         </>
       )}
 
-      <AddDvdDialog
-        open={adding !== false}
-        startScanning={adding === "scan"}
-        onClose={() => setAdding(false)}
-      />
+      <AddDvdDialog open={adding} onClose={() => setAdding(false)} />
       <TitleDetailsDialog itemId={openItemId} onClose={() => setOpenItemId(null)} />
     </>
   );

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- A gold disc: a pale diagonal sheen across it, a darker gold hub, and the centre hole. -->
+  <defs>
+    <clipPath id="disc">
+      <circle cx="32" cy="32" r="30"/>
+    </clipPath>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="#f7c400"/>
+  <g clip-path="url(#disc)">
+    <rect x="25" y="-12" width="15" height="88" fill="#f6f0a2" transform="rotate(40 32 32)"/>
+  </g>
+  <circle cx="32" cy="32" r="13" fill="#d4900a"/>
+  <circle cx="32" cy="32" r="8.4" fill="#f6f0a2"/>
+  <circle cx="32" cy="32" r="6.4" fill="#ffffff"/>
+</svg>

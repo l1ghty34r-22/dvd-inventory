@@ -161,10 +161,17 @@ export interface TitlePreview {
   owned_count: number;
 }
 
-const TOKEN_KEY = "dvd_inventory_token";
+const TOKEN_KEY = "neverdisc_token";
+// Saved by the app before it was renamed; moved over so nobody is logged out by the rename.
+const OLD_TOKEN_KEY = "dvd_inventory_token";
 
 export function getToken(): string | null {
   try {
+    const old = localStorage.getItem(OLD_TOKEN_KEY);
+    if (old !== null) {
+      if (localStorage.getItem(TOKEN_KEY) === null) localStorage.setItem(TOKEN_KEY, old);
+      localStorage.removeItem(OLD_TOKEN_KEY);
+    }
     return localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;

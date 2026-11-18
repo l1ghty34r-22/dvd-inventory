@@ -230,13 +230,6 @@ button:disabled {
   text-decoration: none;
 }
 
-/* A tiny disc: a ring with a hole. */
-.brand-disc {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--bg) 0 3px, var(--accent) 3.5px 6px, #a5b4fc 6.5px);
-}
 
 .site-header-actions {
   display: flex;
@@ -244,8 +237,82 @@ button:disabled {
   gap: 0.75rem;
 }
 
-.header-email {
-  font-size: 0.9rem;
+/* Account menu, top right */
+
+.account {
+  position: relative;
+}
+
+.account-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem 0.25rem 0.25rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.account-button:hover,
+.account-button[aria-expanded="true"] {
+  background: var(--surface);
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 50%;
+}
+
+.account-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 15rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px #1617202a;
+}
+
+.account-who {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.7rem 0.75rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-who strong {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.account-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+  background: none;
+  border-radius: 6px;
+}
+
+.account-item:hover {
+  background: var(--surface);
 }
 
 .footnote {
@@ -386,7 +453,22 @@ button:disabled {
   border-bottom: 1px solid var(--line);
 }
 
+.app-icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+
+.with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   padding: 0.7rem 1rem;
   margin-bottom: -1px;
   font-weight: 600;
@@ -570,11 +652,6 @@ button:disabled {
   margin-top: 1.5rem;
 }
 
-.section-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
 
 /* Profile */
 
@@ -1209,10 +1286,6 @@ button.results-title:hover strong {
 }
 
 @media (max-width: 560px) {
-  .header-email {
-    display: none;
-  }
-
   .shelf {
     grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   }

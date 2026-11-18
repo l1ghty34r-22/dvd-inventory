@@ -1,11 +1,22 @@
+import type { ReactNode } from "react";
+
+import { DiscIcon } from "../components/AppIcon";
 import { Link } from "../router";
 import { CollectionTab } from "./CollectionTab";
 import { ProfileTab } from "./ProfileTab";
 
 type Tab = "collection" | "profile";
 
-const TABS: { id: Tab; label: string; to: string }[] = [
-  { id: "collection", label: "My collection", to: "/dashboard/collection" },
+const TABS: { id: Tab; label: ReactNode; to: string }[] = [
+  {
+    id: "collection",
+    label: (
+      <>
+        <DiscIcon size={18} /> Collection
+      </>
+    ),
+    to: "/dashboard/collection",
+  },
   { id: "profile", label: "Profile", to: "/dashboard/profile" },
 ];
 
