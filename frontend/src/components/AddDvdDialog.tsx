@@ -6,12 +6,14 @@ import { api, ApiError, FORMAT_LABELS } from "../api";
 import type {
   BarcodeLookup,
   DiscFormat,
+  InventoryItem,
   MediaType,
   MovieSearchResult,
   NewInventoryItem,
   TitlePreview,
 } from "../api";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { CaseCover } from "./DvdCase";
 import { TitleBody, TitleHeader } from "./TitleInfo";
 
 function useDebounced(value: string, delayMs: number): string {
@@ -40,6 +42,15 @@ function BarcodeIcon() {
         x += width + (i % 2 === 0 ? 0 : 0.6);
         return rect;
       })}
+    </svg>
+  );
+}
+
+/** The "+" on each search result. */
+function PlusIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+      <path d="M9 3v12M3 9h12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -83,8 +94,9 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   const [format, setFormat] = useState<DiscFormat>("dvd");
   const [manual, setManual] = useState(false);
   const [year, setYear] = useState("");
-  const [addedKeys, setAddedKeys] = useState<string[]>([]);
-  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  // Everything added while this popup is open, newest first, so you can see (and undo) it.
+  const [added, setAdded] = useState<InventoryItem[]>([]);
+  const addedKeys = added.map((item) => resultKey(item.movie));
 
   const [scanning, setScanning] = useState(startScanning);
   // The barcode that will be saved with the next title added.
@@ -114,7 +126,6 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
     mutationFn: api.lookupBarcode,
     onSuccess: (info) => {
       setScan(info);
-      setLastAdded(null);
       if (info.format_guess) setFormat(info.format_guess);
       if (info.title_guess) setTerm(info.title_guess);
       // Go straight to the title the barcode most likely is.
@@ -125,10 +136,17 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   const addItem = useMutation({
     mutationFn: api.addItem,
     onSuccess: (item) => {
-      setLastAdded(`${item.movie.title} (${FORMAT_LABELS[item.format]})`);
-      setAddedKeys((keys) => [...keys, resultKey(item.movie)]);
+      setAdded((list) => [item, ...list]);
       // A barcode belongs to one disc, so do not carry it over to the next title.
       setScan(null);
+      void queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+
+  const undo = useMutation({
+    mutationFn: (id: number) => api.deleteItem(id),
+    onSuccess: (_, id) => {
+      setAdded((list) => list.filter((item) => item.id !== id));
       void queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
   });
@@ -189,7 +207,6 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   function scanAnother() {
     setTarget(null);
     setScan(null);
-    setLastAdded(null);
     addItem.reset();
     lookup.reset();
     setScanning(true);
@@ -204,7 +221,7 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   return (
     <div className="add-layout">
       <header className="add-head">
-        <h2 id="add-dialog-title">Add a DVD</h2>
+        <h2 id="add-dialog-title">Every Disc Deserves a Shelf</h2>
         <button type="button" className="close-button" onClick={onClose} aria-label="Close">
           ×
         </button>
@@ -270,6 +287,15 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
                     <BarcodeIcon />
                   </button>
                 </div>
+                {!searchUnavailable && (
+                  <button
+                    type="button"
+                    className="text-button small-link"
+                    onClick={() => setManual(!manual)}
+                  >
+                    {manual ? "Search instead" : "Not listed? Add it by hand"}
+                  </button>
+                )}
               </div>
               {showManual && (
                 <label>
@@ -331,17 +357,24 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
                 {search.data && search.data.length > 0 && (
                   <ul className="results">
                     {search.data.map((movie) => {
-                      const added = addedKeys.includes(resultKey(movie));
+                      const isAdded = addedKeys.includes(resultKey(movie));
+                      const name = `${movie.title} (${kindLabel(movie.media_type)}${movie.year ? `, ${movie.year}` : ""})`;
                       return (
-                        <ResultRow key={resultKey(movie)} movie={movie} onOpen={() => openTitle(movie)}>
+                        <ResultRow
+                          key={resultKey(movie)}
+                          movie={movie}
+                          added={isAdded}
+                          onOpen={() => openTitle(movie)}
+                        >
                           <button
                             type="button"
-                            className={added ? "text-button" : "secondary"}
+                            className="add-icon-button"
                             onClick={() => addFromResult(movie)}
                             disabled={addItem.isPending}
-                            aria-label={`Add ${movie.title} (${kindLabel(movie.media_type)}${movie.year ? `, ${movie.year}` : ""})`}
+                            aria-label={isAdded ? `Add another copy of ${name}` : `Add ${name}`}
+                            title={isAdded ? "Add another copy" : "Add to my collection"}
                           >
-                            {added ? "Add another copy" : "Add"}
+                            <PlusIcon />
                           </button>
                         </ResultRow>
                       );
@@ -392,7 +425,7 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
 
         <div className="side-status" aria-live="polite">
           {addItem.isError && <p className="error">Could not add it: {addItem.error.message}</p>}
-          {lastAdded && !addItem.isError && <p className="confirm">Added {lastAdded}.</p>}
+          {undo.isError && <p className="error">Could not undo it: {undo.error.message}</p>}
           {target && preview.data && preview.data.owned_count > 0 && !targetAdded && (
             <p>
               You already own{" "}
@@ -447,28 +480,41 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
               >
                 Add to shelf
               </button>
-              {!searchUnavailable && (
-                <button
-                  key="search-instead"
-                  type="button"
-                  className="button secondary"
-                  onClick={() => setManual(false)}
-                >
-                  Search instead
-                </button>
-              )}
             </>
-          ) : (
-            <button
-              key="go-manual"
-              type="button"
-              className="button secondary"
-              onClick={() => setManual(true)}
-            >
-              Not listed? Add it by hand
-            </button>
-          )}
+          ) : null}
         </div>
+
+        {added.length > 0 && (
+          <section className="added-list" aria-label="Added this time" aria-live="polite">
+            <h3>
+              Added this time <span className="added-count">{added.length}</span>
+            </h3>
+            <ul>
+              {added.map((item) => (
+                <li key={item.id}>
+                  <span className="case mini-case">
+                    <CaseCover title={item.movie.title} posterUrl={item.movie.poster_url} />
+                  </span>
+                  <span className="added-text">
+                    <strong>{item.movie.title}</strong>
+                    <span className="muted">
+                      {[item.movie.year, FORMAT_LABELS[item.format]].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => undo.mutate(item.id)}
+                    disabled={undo.isPending}
+                    aria-label={`Undo adding ${item.movie.title}`}
+                  >
+                    Undo
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <button type="button" className="button secondary side-done" onClick={onClose}>
           Done
@@ -480,10 +526,13 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
 
 function ResultRow({
   movie,
+  added = false,
   onOpen,
   children,
 }: {
   movie: MovieSearchResult;
+  /** Already added while this popup is open. */
+  added?: boolean;
   onOpen?: () => void;
   children: ReactNode;
 }) {
@@ -491,7 +540,10 @@ function ResultRow({
   const text = (
     <>
       <strong>{movie.title}</strong>
-      <span className="muted">{movie.year ? `${movie.year} · ${kind}` : kind}</span>
+      <span className="muted">
+        {movie.year ? `${movie.year} · ${kind}` : kind}
+        {added && <span className="added-tag">Added</span>}
+      </span>
     </>
   );
   return (

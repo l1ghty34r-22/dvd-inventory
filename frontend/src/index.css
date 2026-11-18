@@ -1374,3 +1374,143 @@ button.results-title:hover strong {
   white-space: normal;
   text-align: center;
 }
+
+/* Add dialog: the "+" on each result, the hand-entry link, and the "Added this time" list */
+
+.add-icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.add-icon-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.add-icon-button svg {
+  display: block;
+}
+
+.small-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.added-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--confirm);
+  background: #ecfdf3;
+  border-radius: 999px;
+}
+
+.added-list {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.added-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4rem;
+  margin-left: 0.3rem;
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  color: #fff;
+  background: var(--confirm);
+  border-radius: 999px;
+}
+
+.added-list ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.added-list li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.6rem;
+  padding: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+/* The newest addition flashes green once, so you notice it landed. */
+.added-list li:first-child {
+  animation: added-flash 1.6s ease-out;
+}
+
+@keyframes added-flash {
+  from {
+    background: #d1fadf;
+    border-color: #75e0a7;
+  }
+}
+
+.added-list .mini-case {
+  width: 28px;
+}
+
+.added-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
+.added-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.added-list .text-button {
+  grid-column: 2;
+  justify-self: start;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .add-icon-button {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .added-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .added-list .mini-case {
+    display: none;
+  }
+
+  .added-list .text-button {
+    grid-column: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .added-list li:first-child {
+    animation: none;
+  }
+}
