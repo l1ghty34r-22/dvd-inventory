@@ -31,6 +31,12 @@ const MANUAL_FORM = "add-by-hand";
 // 8, 12 or 13 digits (spaces and dashes allowed): what a DVD barcode looks like when typed.
 const looksLikeBarcode = (text: string) => /^\d{8,14}$/.test(text.replace(/[\s-]/g, ""));
 
+const FORMATS: { value: DiscFormat; label: string }[] = [
+  { value: "dvd", label: "DVD" },
+  { value: "bluray", label: "Blu-ray" },
+  { value: "uhd", label: "4K Ultra HD" },
+];
+
 /** A small barcode drawn with bars, for the scan button. */
 function BarcodeIcon() {
   const bars = [2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 1, 1, 2];
@@ -49,9 +55,50 @@ function BarcodeIcon() {
 /** The "+" on each search result. */
 function PlusIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+    <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
       <path d="M9 3v12M3 9h12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
     </svg>
+  );
+}
+
+/** Three buttons, one per disc format. Picking one adds the title in that format. */
+function FormatPicker({
+  label,
+  suggested,
+  disabled,
+  onPick,
+  onCancel,
+}: {
+  label: string;
+  /** Read from a scanned barcode's product name; marked so it is the obvious choice. */
+  suggested: DiscFormat | null;
+  disabled: boolean;
+  onPick: (format: DiscFormat) => void;
+  onCancel?: () => void;
+}) {
+  return (
+    <div className="format-picker" role="group" aria-label={label}>
+      <span className="format-picker-label">{label}</span>
+      <div className="format-picker-buttons">
+        {FORMATS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            className={f.value === suggested ? "format-choice suggested" : "format-choice"}
+            onClick={() => onPick(f.value)}
+            disabled={disabled}
+            title={f.value === suggested ? "Suggested from the barcode" : undefined}
+          >
+            {f.label}
+          </button>
+        ))}
+        {onCancel && (
+          <button type="button" className="text-button format-cancel" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -90,13 +137,13 @@ export function AddDvdDialog({ open, startScanning = false, onClose }: Props) {
 function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScanning: boolean }) {
   const queryClient = useQueryClient();
   const [term, setTerm] = useState("");
-  const [location, setLocation] = useState("");
-  const [format, setFormat] = useState<DiscFormat>("dvd");
   const [manual, setManual] = useState(false);
   const [year, setYear] = useState("");
   // Everything added while this popup is open, newest first, so you can see (and undo) it.
   const [added, setAdded] = useState<InventoryItem[]>([]);
   const addedKeys = added.map((item) => resultKey(item.movie));
+  // The search result whose "+" was pressed: it shows the format buttons.
+  const [pickingKey, setPickingKey] = useState<string | null>(null);
 
   const [scanning, setScanning] = useState(startScanning);
   // The barcode that will be saved with the next title added.
@@ -126,7 +173,6 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
     mutationFn: api.lookupBarcode,
     onSuccess: (info) => {
       setScan(info);
-      if (info.format_guess) setFormat(info.format_guess);
       if (info.title_guess) setTerm(info.title_guess);
       // Go straight to the title the barcode most likely is.
       if (info.best_match) openTitle(info.best_match);
@@ -137,6 +183,7 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
     mutationFn: api.addItem,
     onSuccess: (item) => {
       setAdded((list) => [item, ...list]);
+      setPickingKey(null);
       // A barcode belongs to one disc, so do not carry it over to the next title.
       setScan(null);
       void queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -152,44 +199,31 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   });
 
   const barcode = scan?.barcode ?? null;
+  const suggested = scan?.format_guess ?? null;
   const targetAdded = target !== null && addedKeys.includes(resultKey(target));
 
   function openTitle(next: Target) {
     setTarget(next);
     setShowOthers(false);
+    setPickingKey(null);
     addItem.reset();
   }
 
-  function addTitle(movie: TitleFields) {
-    addItem.mutate({ ...movie, barcode, format, location: location.trim() || null });
-  }
-
-  function addFromResult(movie: MovieSearchResult | TitlePreview) {
-    addTitle({
+  function addTitle(movie: MovieSearchResult | TitlePreview, format: DiscFormat) {
+    const fields: TitleFields = {
       title: movie.title,
       year: movie.year,
       tmdb_id: movie.tmdb_id,
       media_type: movie.media_type,
       poster_url: movie.poster_url,
-    });
+    };
+    addItem.mutate({ ...fields, barcode, format });
   }
 
-  function addManually(event: FormEvent) {
-    event.preventDefault();
-    if (looksLikeBarcode(term)) {
-      lookup.mutate(term.trim());
-      return;
-    }
-    // Enter in the title box only adds in hand-entry mode; while searching it does nothing.
-    if (!showManual || !term.trim()) return;
+  function addManually(format: DiscFormat) {
+    if (!term.trim()) return;
     addItem.mutate(
-      {
-        title: term.trim(),
-        year: year ? Number(year) : null,
-        barcode,
-        format,
-        location: location.trim() || null,
-      },
+      { title: term.trim(), year: year ? Number(year) : null, barcode, format },
       {
         onSuccess: () => {
           setTerm("");
@@ -199,9 +233,20 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
     );
   }
 
+  function handleSubmit(event: FormEvent) {
+    // Enter in the search box: look up a typed barcode. Adding is done with the format buttons.
+    event.preventDefault();
+    if (looksLikeBarcode(term)) lookup.mutate(term.trim());
+  }
+
   function handleDetected(code: string) {
     setScanning(false);
     lookup.mutate(code);
+  }
+
+  function backToSearch() {
+    setTarget(null);
+    addItem.reset();
   }
 
   function scanAnother() {
@@ -218,6 +263,10 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   others.push(...(scan?.candidates ?? []));
   const otherMatches = target ? others.filter((o) => resultKey(o) !== resultKey(target)) : [];
 
+  const addError = addItem.isError && (
+    <p className="error">Could not add it: {addItem.error.message}</p>
+  );
+
   return (
     <div className="add-layout">
       <header className="add-head">
@@ -227,269 +276,268 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
         </button>
       </header>
 
-      {/* Left: find the title */}
-      <div className="add-main">
-        {target ? (
-          <>
-            {scan && (
-              <p className="muted preview-source">
-                Scanned barcode {scan.barcode}
-                {scan.product_title && <> · “{scan.product_title}”</>}
-              </p>
-            )}
-            {preview.isPending && <p className="muted">Loading…</p>}
-            {preview.isError && (
-              <p className="error">Could not load this title: {preview.error.message}</p>
-            )}
-            {preview.data && <TitleHeader title={preview.data} details={preview.data.details} />}
-
-            {showOthers && otherMatches.length > 0 && (
-              <section className="details-section">
-                <h3>Other matches</h3>
-                <ul className="results">
-                  {otherMatches.map((movie) => (
-                    <ResultRow key={resultKey(movie)} movie={movie}>
-                      <button type="button" className="secondary" onClick={() => openTitle(movie)}>
-                        This one
-                      </button>
-                    </ResultRow>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {preview.data && <TitleBody details={preview.data.details} />}
-          </>
-        ) : (
-          <>
-            <form id={MANUAL_FORM} className="add-dialog-fields" onSubmit={addManually}>
-              <div>
-                <label htmlFor="title-search">Film or TV show</label>
-                <div className="search-row">
-                  <input
-                    id="title-search"
-                    type="search"
-                    value={term}
-                    onChange={(e) => setTerm(e.target.value)}
-                    placeholder={showManual ? "Title" : "Search a title, or type a barcode"}
-                    autoFocus={!startScanning}
-                    autoComplete="off"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className={scanning ? "icon-button active" : "icon-button"}
-                    onClick={() => setScanning(!scanning)}
-                    aria-label={scanning ? "Stop scanning" : "Scan a barcode with the camera"}
-                    aria-pressed={scanning}
-                    title="Scan a barcode"
-                  >
-                    <BarcodeIcon />
-                  </button>
-                </div>
-                {!searchUnavailable && (
-                  <button
-                    type="button"
-                    className="text-button small-link"
-                    onClick={() => setManual(!manual)}
-                  >
-                    {manual ? "Search instead" : "Not listed? Add it by hand"}
-                  </button>
-                )}
-              </div>
-              {showManual && (
-                <label>
-                  Year (optional)
-                  <input
-                    type="number"
-                    min={1880}
-                    max={2100}
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                  />
-                </label>
-              )}
-            </form>
-
-            {scanning && (
-              <div className="scanner-slot">
-                <BarcodeScanner onDetected={handleDetected} onCancel={() => setScanning(false)} />
-              </div>
-            )}
-
-            <div className="barcode-messages" aria-live="polite">
-              {looksLikeBarcode(term) && !lookup.isPending && !scan && (
-                <p className="muted">Press Enter to look up barcode {term.trim()}.</p>
-              )}
-              {lookup.isPending && <p className="muted">Looking up the barcode…</p>}
-              {lookup.isError && <p className="error">{lookup.error.message}</p>}
-              {scan && !lookup.isPending && (
-                <p className="muted">
-                  {scan.lookup_error
-                    ? `${scan.lookup_error} Type the title instead.`
-                    : scan.product_title
-                      ? `Barcode ${scan.barcode} is “${scan.product_title}”. Pick the right title.`
-                      : `Barcode ${scan.barcode} isn't in the barcode database. Search for the title.`}
+      {/* Between the fixed header and footer: this part scrolls. */}
+      <div className="add-body">
+        {/* Left: find the title and add it */}
+        <div className="add-main">
+          {target ? (
+            <>
+              {scan && (
+                <p className="muted preview-source">
+                  Scanned barcode {scan.barcode}
+                  {scan.product_title && <> · “{scan.product_title}”</>}
                 </p>
               )}
-            </div>
+              {preview.isPending && <p className="muted">Loading…</p>}
+              {preview.isError && (
+                <p className="error">Could not load this title: {preview.error.message}</p>
+              )}
+              {preview.data && <TitleHeader title={preview.data} details={preview.data.details} />}
 
-            {searchUnavailable && (
-              <p className="muted">
-                Title search is switched off because the server has no TMDB key. Type the details
-                in, then use “Add to shelf” on the right.
-              </p>
-            )}
+              {preview.data && (
+                <div className="title-actions" aria-live="polite">
+                  {targetAdded ? (
+                    <p className="confirm">
+                      <strong>Added {preview.data.title} to your collection.</strong>
+                    </p>
+                  ) : (
+                    preview.data.owned_count > 0 && (
+                      <p className="muted">
+                        You already own{" "}
+                        {preview.data.owned_count === 1
+                          ? "a copy"
+                          : `${preview.data.owned_count} copies`}
+                        .
+                      </p>
+                    )
+                  )}
+                  <FormatPicker
+                    label={
+                      targetAdded || preview.data.owned_count > 0
+                        ? "Add another copy as:"
+                        : "Add to my collection as:"
+                    }
+                    suggested={suggested}
+                    disabled={addItem.isPending}
+                    onPick={(format) => preview.data && addTitle(preview.data, format)}
+                  />
+                  {barcode && (
+                    <p className="muted small-note">Barcode {barcode} is saved with it.</p>
+                  )}
+                  {addError}
+                  <div className="title-links">
+                    {targetAdded && (
+                      <button type="button" className="button primary" onClick={scanAnother}>
+                        Scan another
+                      </button>
+                    )}
+                    {otherMatches.length > 0 && !targetAdded && (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => setShowOthers(!showOthers)}
+                        aria-expanded={showOthers}
+                      >
+                        {showOthers ? "Hide other matches" : "Not this one?"}
+                      </button>
+                    )}
+                    <button type="button" className="button secondary" onClick={backToSearch}>
+                      Back to search
+                    </button>
+                  </div>
+                </div>
+              )}
 
-            {!showManual && (
-              <div className="add-results">
-                {search.isFetching && <p className="muted">Searching…</p>}
-                {search.isError && !searchUnavailable && (
-                  <p className="error">
-                    Search failed: {search.error.message}. Try again in a moment.
-                  </p>
-                )}
-                {search.data && search.data.length === 0 && (
-                  <p className="muted">
-                    No films or TV shows match “{query}”. Check the spelling, or add it by hand.
-                  </p>
-                )}
-                {search.data && search.data.length > 0 && (
+              {showOthers && otherMatches.length > 0 && (
+                <section className="details-section">
+                  <h3>Other matches</h3>
                   <ul className="results">
-                    {search.data.map((movie) => {
-                      const isAdded = addedKeys.includes(resultKey(movie));
-                      const name = `${movie.title} (${kindLabel(movie.media_type)}${movie.year ? `, ${movie.year}` : ""})`;
-                      return (
-                        <ResultRow
-                          key={resultKey(movie)}
-                          movie={movie}
-                          added={isAdded}
-                          onOpen={() => openTitle(movie)}
-                        >
-                          <button
-                            type="button"
-                            className="add-icon-button"
-                            onClick={() => addFromResult(movie)}
-                            disabled={addItem.isPending}
-                            aria-label={isAdded ? `Add another copy of ${name}` : `Add ${name}`}
-                            title={isAdded ? "Add another copy" : "Add to my collection"}
-                          >
-                            <PlusIcon />
-                          </button>
-                        </ResultRow>
-                      );
-                    })}
+                    {otherMatches.map((movie) => (
+                      <ResultRow key={resultKey(movie)} movie={movie}>
+                        <button type="button" className="secondary" onClick={() => openTitle(movie)}>
+                          This one
+                        </button>
+                      </ResultRow>
+                    ))}
                   </ul>
+                </section>
+              )}
+
+              {preview.data && <TitleBody details={preview.data.details} />}
+            </>
+          ) : (
+            <>
+              <form id={MANUAL_FORM} className="add-dialog-fields" onSubmit={handleSubmit}>
+                <div>
+                  <label htmlFor="title-search">Film or TV show</label>
+                  <div className="search-row">
+                    <input
+                      id="title-search"
+                      type="search"
+                      value={term}
+                      onChange={(e) => setTerm(e.target.value)}
+                      placeholder={showManual ? "Title" : "Search a title, or type a barcode"}
+                      autoFocus={!startScanning}
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      className={scanning ? "icon-button active" : "icon-button"}
+                      onClick={() => setScanning(!scanning)}
+                      aria-label={scanning ? "Stop scanning" : "Scan a barcode with the camera"}
+                      aria-pressed={scanning}
+                      title="Scan a barcode"
+                    >
+                      <BarcodeIcon />
+                    </button>
+                  </div>
+                  {!searchUnavailable && (
+                    <button
+                      type="button"
+                      className="text-button small-link"
+                      onClick={() => setManual(!manual)}
+                    >
+                      {manual ? "Search instead" : "Not listed? Add it by hand"}
+                    </button>
+                  )}
+                </div>
+                {showManual && (
+                  <>
+                    <label>
+                      Year (optional)
+                      <input
+                        type="number"
+                        min={1880}
+                        max={2100}
+                        value={year}
+                        onChange={(e) => setYear(e.target.value)}
+                      />
+                    </label>
+                    <FormatPicker
+                      label="Add to my collection as:"
+                      suggested={suggested}
+                      disabled={addItem.isPending || !term.trim()}
+                      onPick={addManually}
+                    />
+                    {addError}
+                  </>
                 )}
-                {!search.data && !search.isFetching && !looksLikeBarcode(term) && !scanning && (
+              </form>
+
+              {scanning && (
+                <div className="scanner-slot">
+                  <BarcodeScanner onDetected={handleDetected} onCancel={() => setScanning(false)} />
+                </div>
+              )}
+
+              <div className="barcode-messages" aria-live="polite">
+                {looksLikeBarcode(term) && !lookup.isPending && !scan && (
+                  <p className="muted">Press Enter to look up barcode {term.trim()}.</p>
+                )}
+                {lookup.isPending && <p className="muted">Looking up the barcode…</p>}
+                {lookup.isError && <p className="error">{lookup.error.message}</p>}
+                {scan && !lookup.isPending && (
                   <p className="muted">
-                    Type at least two letters, or tap the barcode button to scan the back of the case.
+                    {scan.lookup_error
+                      ? `${scan.lookup_error} Type the title instead; the barcode is saved with it.`
+                      : scan.product_title
+                        ? `Barcode ${scan.barcode} is “${scan.product_title}”. Pick the right title; the barcode is saved with it.`
+                        : `Barcode ${scan.barcode} isn't in the barcode database. Search for the title; the barcode is saved with it.`}{" "}
+                    <button type="button" className="text-button" onClick={() => setScan(null)}>
+                      Forget barcode
+                    </button>
                   </p>
                 )}
               </div>
-            )}
-          </>
-        )}
-      </div>
 
-      {/* Right: the copy you own, and what to do next */}
-      <aside className="add-side" aria-label="Your copy">
-        <h3>Your copy</h3>
-        <label>
-          Format
-          <select value={format} onChange={(e) => setFormat(e.target.value as DiscFormat)}>
-            {(Object.keys(FORMAT_LABELS) as DiscFormat[]).map((key) => (
-              <option key={key} value={key}>
-                {FORMAT_LABELS[key]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Where you keep it
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Optional"
-          />
-        </label>
+              {searchUnavailable && (
+                <p className="muted">
+                  Title search is switched off because the server has no TMDB key. Type the details
+                  in, then pick the format to add it.
+                </p>
+              )}
 
-        {barcode && (
-          <p className="side-note">
-            Barcode <strong>{barcode}</strong> will be saved with it.{" "}
-            <button type="button" className="text-button" onClick={() => setScan(null)}>
-              Forget
-            </button>
-          </p>
-        )}
-
-        <div className="side-status" aria-live="polite">
-          {addItem.isError && <p className="error">Could not add it: {addItem.error.message}</p>}
-          {undo.isError && <p className="error">Could not undo it: {undo.error.message}</p>}
-          {target && preview.data && preview.data.owned_count > 0 && !targetAdded && (
-            <p>
-              You already own{" "}
-              {preview.data.owned_count === 1 ? "a copy" : `${preview.data.owned_count} copies`}.
-            </p>
+              {!showManual && (
+                <div className="add-results">
+                  {search.isFetching && <p className="muted">Searching…</p>}
+                  {search.isError && !searchUnavailable && (
+                    <p className="error">
+                      Search failed: {search.error.message}. Try again in a moment.
+                    </p>
+                  )}
+                  {addError}
+                  {search.data && search.data.length === 0 && (
+                    <p className="muted">
+                      No films or TV shows match “{query}”. Check the spelling, or add it by hand.
+                    </p>
+                  )}
+                  {search.data && search.data.length > 0 && (
+                    <ul className="results">
+                      {search.data.map((movie) => {
+                        const key = resultKey(movie);
+                        const isAdded = addedKeys.includes(key);
+                        const picking = pickingKey === key;
+                        const name = `${movie.title} (${kindLabel(movie.media_type)}${movie.year ? `, ${movie.year}` : ""})`;
+                        return (
+                          <ResultRow
+                            key={key}
+                            movie={movie}
+                            added={isAdded}
+                            onOpen={() => openTitle(movie)}
+                            below={
+                              picking && (
+                                <FormatPicker
+                                  label="Add as:"
+                                  suggested={suggested}
+                                  disabled={addItem.isPending}
+                                  onPick={(format) => addTitle(movie, format)}
+                                  onCancel={() => setPickingKey(null)}
+                                />
+                              )
+                            }
+                          >
+                            <button
+                              type="button"
+                              className={picking ? "add-icon-button open" : "add-icon-button"}
+                              onClick={() => setPickingKey(picking ? null : key)}
+                              aria-expanded={picking}
+                              aria-label={
+                                isAdded ? `Add another copy of ${name}` : `Add ${name}`
+                              }
+                              title={isAdded ? "Add another copy" : "Add to my collection"}
+                            >
+                              <PlusIcon />
+                            </button>
+                          </ResultRow>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {!search.data && !search.isFetching && !looksLikeBarcode(term) && !scanning && (
+                    <p className="muted">
+                      Type at least two letters, or tap the barcode button to scan the back of the
+                      case.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        <div className="side-actions">
-          {target ? (
-            <>
-              {targetAdded ? (
-                <button type="button" className="button primary" onClick={scanAnother}>
-                  Scan another
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="button primary"
-                  disabled={!preview.data || addItem.isPending}
-                  onClick={() => preview.data && addFromResult(preview.data)}
-                >
-                  {preview.data && preview.data.owned_count > 0
-                    ? "Add another copy"
-                    : "Add to my collection"}
-                </button>
-              )}
-              {otherMatches.length > 0 && !targetAdded && (
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => setShowOthers(!showOthers)}
-                  aria-expanded={showOthers}
-                >
-                  {showOthers ? "Hide other matches" : "Not this one?"}
-                </button>
-              )}
-              <button type="button" className="button secondary" onClick={() => setTarget(null)}>
-                Back to search
-              </button>
-            </>
-          ) : showManual ? (
-            <>
-              {/* Distinct keys: the button that switches modes must not be reused as the submit
-                  button, or the same click would also submit the form. */}
-              <button
-                key="add-manual"
-                type="submit"
-                form={MANUAL_FORM}
-                className="button primary"
-                disabled={addItem.isPending}
-              >
-                Add to shelf
-              </button>
-            </>
-          ) : null}
-        </div>
-
-        {added.length > 0 && (
-          <section className="added-list" aria-label="Added this time" aria-live="polite">
-            <h3>
-              Added this time <span className="added-count">{added.length}</span>
-            </h3>
-            <ul>
+        {/* Right: only what you have added while this popup is open */}
+        <aside className="add-side" aria-label="Added this time">
+          <h3>
+            Added this time
+            {added.length > 0 && <span className="added-count">{added.length}</span>}
+          </h3>
+          {undo.isError && <p className="error">Could not undo it: {undo.error.message}</p>}
+          {added.length === 0 ? (
+            <p className="muted side-empty">
+              Nothing added yet. Titles you add show up here, so you can keep track.
+            </p>
+          ) : (
+            <ul className="added-list" aria-live="polite">
               {added.map((item) => (
                 <li key={item.id}>
                   <span className="case mini-case">
@@ -513,13 +561,16 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
                 </li>
               ))}
             </ul>
-          </section>
-        )}
+          )}
+        </aside>
+      </div>
 
-        <button type="button" className="button secondary side-done" onClick={onClose}>
+      {/* Always visible at the bottom of the popup, however far you scroll. */}
+      <footer className="add-foot">
+        <button type="button" className="button primary add-done" onClick={onClose}>
           Done
         </button>
-      </aside>
+      </footer>
     </div>
   );
 }
@@ -528,12 +579,15 @@ function ResultRow({
   movie,
   added = false,
   onOpen,
+  below,
   children,
 }: {
   movie: MovieSearchResult;
   /** Already added while this popup is open. */
   added?: boolean;
   onOpen?: () => void;
+  /** Shown under the row, across its full width (the format buttons). */
+  below?: ReactNode;
   children: ReactNode;
 }) {
   const kind = kindLabel(movie.media_type);
@@ -566,6 +620,7 @@ function ResultRow({
         <span className="results-title">{text}</span>
       )}
       {children}
+      {below && <div className="result-below">{below}</div>}
     </li>
   );
 }
