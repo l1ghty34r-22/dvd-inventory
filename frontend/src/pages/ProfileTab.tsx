@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { useAuth } from "../auth";
+import { Avatar } from "../components/Avatar";
 import type { OwnedTitle } from "../api";
 import { BarList } from "../components/BarList";
 import { CaseCover } from "../components/DvdCase";
@@ -40,6 +42,7 @@ function TitleList({ heading, titles }: { heading: string; titles: OwnedTitle[] 
 }
 
 export function ProfileTab() {
+  const { user } = useAuth();
   const profile = useQuery({ queryKey: ["inventory", "profile"], queryFn: api.profile });
   const stats = useQuery({ queryKey: ["inventory", "stats"], queryFn: api.stats });
 
@@ -60,12 +63,17 @@ export function ProfileTab() {
     <>
       <div className="section-head">
         <div className="profile-id">
-          <span className="avatar" aria-hidden="true">
-            {p.email.charAt(0).toUpperCase()}
-          </span>
+          {user && <Avatar user={user} className="avatar profile-avatar" />}
           <div>
             <h1>{p.email}</h1>
             <p className="muted">Collecting since {memberSince}</p>
+            {user?.bio ? (
+              <p className="profile-bio">{user.bio}</p>
+            ) : (
+              <Link to="/settings" className="text-button small-note">
+                Add a bio and picture
+              </Link>
+            )}
           </div>
         </div>
       </div>

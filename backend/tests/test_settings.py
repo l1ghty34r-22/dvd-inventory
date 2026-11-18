@@ -198,6 +198,7 @@ def test_upgrade_adds_user_columns(tmp_path):
         "totp_enabled",
         "totp_last_step",
         "recovery_codes",
+        "bio",
     } <= columns
     with engine.begin() as conn:
         row = conn.execute(text("SELECT token_version, totp_enabled FROM users")).one()

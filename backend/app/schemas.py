@@ -30,6 +30,15 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     two_factor_enabled: bool = Field(validation_alias="totp_enabled", default=False)
+    bio: str | None = None
+    avatar_url: str | None = None
+
+
+BIO_MAX = 300
+
+
+class ProfileUpdate(BaseModel):
+    bio: str | None = Field(default=None, max_length=BIO_MAX)
 
 
 class EmailChange(BaseModel):

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { User } from "../api";
 import { Link } from "../router";
+import { Avatar } from "./Avatar";
 
 interface Props {
   user: User;
@@ -47,9 +48,7 @@ export function AccountMenu({ user, showDashboardLink, onLogout }: Props) {
         aria-controls="account-panel"
         aria-label="Account"
       >
-        <span className="account-avatar" aria-hidden="true">
-          {user.email.charAt(0).toUpperCase()}
-        </span>
+        <Avatar user={user} className="account-avatar" />
         <svg width="12" height="8" viewBox="0 0 12 8" aria-hidden="true">
           <path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.6" />
         </svg>

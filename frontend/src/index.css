@@ -2062,8 +2062,22 @@ button.results-title:hover strong {
   padding: 1.5rem 1.25rem 3rem;
 }
 
-.settings > h1 {
-  margin: 0.75rem 0 1.5rem;
+.settings-head {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem 2rem;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.settings-head .back-link {
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .settings-head {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-section {
@@ -2182,4 +2196,67 @@ button.results-title:hover strong {
   .settings-section {
     grid-template-columns: 1fr;
   }
+}
+
+/* Profile pictures */
+
+.avatar-img {
+  object-fit: cover;
+  padding: 0;
+}
+
+.account-avatar.avatar-img {
+  display: block;
+}
+
+.settings-avatar {
+  width: 88px;
+  height: 88px;
+  font-size: 2.2rem;
+}
+
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 1.9rem;
+}
+
+.picture-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.6rem;
+}
+
+.picture-actions .small-note,
+.picture-actions .error {
+  flex-basis: 100%;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 6rem;
+  line-height: 1.45;
+}
+
+.bio-count {
+  text-align: right;
+}
+
+.profile-id {
+  align-items: flex-start;
+}
+
+.profile-bio {
+  max-width: 40rem;
+  margin-top: 0.5rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }

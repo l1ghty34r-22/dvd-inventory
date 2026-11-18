@@ -1,6 +1,16 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -28,9 +38,39 @@ class User(Base):
     # SHA-256 hashes of the unused one-time recovery codes.
     recovery_codes: Mapped[list[str] | None] = mapped_column(JSON)
 
+    # A few lines about yourself, shown on your profile.
+    bio: Mapped[str | None] = mapped_column(Text)
+
     items: Mapped[list["InventoryItem"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+    avatar: Mapped["Avatar | None"] = relationship(
+        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    @property
+    def avatar_url(self) -> str | None:
+        return f"/api/avatars/{self.avatar.key}" if self.avatar else None
+
+
+class Avatar(Base):
+    """A user's profile picture, kept in the database so it survives redeploys.
+
+    `key` is random and changes with every upload, so the picture's address can't be guessed
+    and browsers can cache each version for good.
+    """
+
+    __tablename__ = "avatars"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    key: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    content_type: Mapped[str] = mapped_column(String(20))
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="avatar")
 
 
 class Movie(Base):

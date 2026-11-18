@@ -53,6 +53,7 @@ def upgrade_schema(bind: Engine) -> None:
                 "totp_enabled": "BOOLEAN NOT NULL DEFAULT FALSE",
                 "totp_last_step": "INTEGER",
                 "recovery_codes": "JSON",
+                "bio": "TEXT",
             }
             for name, definition in new_columns.items():
                 if name not in columns:

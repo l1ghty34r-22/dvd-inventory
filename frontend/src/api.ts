@@ -2,7 +2,12 @@ export interface User {
   id: number;
   email: string;
   two_factor_enabled: boolean;
+  bio: string | null;
+  /** Address of the profile picture, or null for none. */
+  avatar_url: string | null;
 }
+
+export const BIO_MAX = 300;
 
 export interface TwoFactorSetup {
   secret: string;
@@ -266,6 +271,16 @@ export const api = {
       "/auth/password",
       json("POST", { current_password: currentPassword, new_password: newPassword }),
     ),
+
+  updateProfile: (bio: string) => request<User>("/auth/profile", json("PATCH", { bio })),
+
+  uploadAvatar: (picture: Blob) => {
+    const body = new FormData();
+    body.append("file", picture, "avatar.jpg");
+    return request<User>("/auth/avatar", { method: "PUT", body });
+  },
+
+  removeAvatar: () => request<User>("/auth/avatar", { method: "DELETE" }),
 
   twoFactorSetup: (password: string) =>
     request<TwoFactorSetup>("/auth/2fa/setup", json("POST", { password })),

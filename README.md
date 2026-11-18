@@ -6,7 +6,8 @@ see them on a shelf, click any case for the story and cast, and see stats on wha
 **Pages:** a home page explaining the app, separate log-in and sign-up pages, and a dashboard with two tabs:
 *My collection* (headline stats, search, add, and the shelf) and *Profile* (films vs. shows,
 genres, decades, hours of film, and every title you own), and a **Settings** page (from the
-account menu) to change your email or password and turn on two-factor authentication.
+account menu) to add a profile picture and bio, change your email or password, and turn on
+two-factor authentication.
 
 **Stack:** FastAPI, SQLAlchemy, PostgreSQL, React, TypeScript, Vite, TanStack Query, Docker, GitHub Actions.
 
@@ -131,7 +132,8 @@ backend/
     deps.py          current-user dependency
     tmdb.py          TMDB API client (films and TV)
     barcodes.py      barcode checks, UPCitemdb lookup, product-name cleaning
-    routers/         auth, inventory (with stats), movies (TMDB search, barcode lookup)
+    routers/         auth, inventory (with stats), movies (TMDB search, barcode lookup),
+                     profile (bio, picture)
   tests/             pytest, runs on in-memory SQLite
 frontend/
   src/
@@ -151,6 +153,10 @@ frontend/
 | POST | `/api/auth/register` | Create an account |
 | POST | `/api/auth/login` | Get a JWT (OAuth2 password form, plus `otp` when two-factor is on) |
 | GET | `/api/auth/me` | Current user (with `two_factor_enabled`) |
+| PATCH | `/api/auth/profile` | Set your bio (up to 300 characters) |
+| PUT | `/api/auth/avatar` | Upload a profile picture (JPEG, PNG, WebP or GIF, 2 MB max) |
+| DELETE | `/api/auth/avatar` | Remove your profile picture |
+| GET | `/api/avatars/{key}` | A profile picture (random, unguessable key; cached) |
 | POST | `/api/auth/email` | Change email (needs the password) |
 | POST | `/api/auth/password` | Change password; signs out other devices, returns a new token |
 | POST | `/api/auth/2fa/setup` | Start two-factor set-up: secret and QR code (needs the password) |

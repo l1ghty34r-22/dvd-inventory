@@ -1,9 +1,11 @@
-import { useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { useRef, useState } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 
-import { api } from "../api";
+import { api, BIO_MAX } from "../api";
 import type { TwoFactorSetup } from "../api";
 import { useAuth } from "../auth";
+import { Avatar } from "../components/Avatar";
+import { squareJpeg } from "../imageResize";
 import { Link } from "../router";
 
 function errorText(err: unknown): string {
@@ -19,6 +21,124 @@ function Section({ title, intro, children }: { title: string; intro: string; chi
       </div>
       <div className="settings-section-body">{children}</div>
     </section>
+  );
+}
+
+function ProfileSettings() {
+  const { user, updateAccount } = useAuth();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [bio, setBio] = useState(user?.bio ?? "");
+  const [pictureBusy, setPictureBusy] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const [bioBusy, setBioBusy] = useState(false);
+  const [bioError, setBioError] = useState<string | null>(null);
+  const [bioSaved, setBioSaved] = useState(false);
+  if (!user) return null;
+  const bioChanged = bio.trim() !== (user.bio ?? "");
+
+  async function handlePicture(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // so picking the same file again still triggers a change
+    if (!file) return;
+    setPictureBusy(true);
+    setPictureError(null);
+    try {
+      updateAccount(await api.uploadAvatar(await squareJpeg(file)));
+    } catch (err) {
+      setPictureError(errorText(err));
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
+  async function removePicture() {
+    setPictureBusy(true);
+    setPictureError(null);
+    try {
+      updateAccount(await api.removeAvatar());
+    } catch (err) {
+      setPictureError(errorText(err));
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
+  async function saveBio(event: FormEvent) {
+    event.preventDefault();
+    setBioBusy(true);
+    setBioError(null);
+    setBioSaved(false);
+    try {
+      const updated = await api.updateProfile(bio);
+      updateAccount(updated);
+      setBio(updated.bio ?? "");
+      setBioSaved(true);
+    } catch (err) {
+      setBioError(errorText(err));
+    } finally {
+      setBioBusy(false);
+    }
+  }
+
+  return (
+    <Section title="Profile" intro="Your picture and a few words about you, shown on your profile.">
+      <div className="picture-row">
+        <Avatar user={user} className="avatar settings-avatar" />
+        <div className="picture-actions">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            onChange={(e) => void handlePicture(e)}
+            hidden
+          />
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => fileInput.current?.click()}
+            disabled={pictureBusy}
+          >
+            {pictureBusy ? "Uploading…" : user.avatar_url ? "Change picture" : "Upload picture"}
+          </button>
+          {user.avatar_url && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => void removePicture()}
+              disabled={pictureBusy}
+            >
+              Remove
+            </button>
+          )}
+          <p className="muted small-note">JPEG, PNG, WebP or GIF. It's cropped to a square.</p>
+          {pictureError && <p className="error">{pictureError}</p>}
+        </div>
+      </div>
+
+      <form className="settings-form" onSubmit={saveBio}>
+        <label>
+          Bio
+          <textarea
+            value={bio}
+            onChange={(e) => {
+              setBio(e.target.value);
+              setBioSaved(false);
+            }}
+            maxLength={BIO_MAX}
+            rows={4}
+            placeholder="What do you collect? Favourite films, the rarest disc on your shelf…"
+          />
+        </label>
+        <p className="muted hint bio-count">
+          {bio.length}/{BIO_MAX}
+        </p>
+        {bioError && <p className="error">{bioError}</p>}
+        {bioSaved && !bioChanged && <p className="confirm">Bio saved.</p>}
+        <button type="submit" className="button primary" disabled={bioBusy || !bioChanged}>
+          {bioBusy ? "Saving…" : "Save bio"}
+        </button>
+      </form>
+    </Section>
   );
 }
 
@@ -396,10 +516,14 @@ function TwoFactorSettings() {
 export function SettingsPage() {
   return (
     <main className="settings">
-      <Link to="/dashboard/collection" className="text-button back-link">
-        ← Back to my collection
-      </Link>
-      <h1>Settings</h1>
+      {/* Same two columns as the sections: the back link on the left, the title over the fields. */}
+      <div className="settings-head">
+        <Link to="/dashboard/collection" className="text-button back-link">
+          ← Back to my collection
+        </Link>
+        <h1>Settings</h1>
+      </div>
+      <ProfileSettings />
       <EmailSettings />
       <PasswordSettings />
       <TwoFactorSettings />
