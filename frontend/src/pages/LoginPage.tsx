@@ -64,6 +64,16 @@ export function LoginPage() {
               required
             />
           </label>
+          <Link
+            to={
+              email.trim()
+                ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+                : "/forgot-password"
+            }
+            className="text-button forgot-link"
+          >
+            Forgot password?
+          </Link>
           {needsCode && (
             <label>
               Code from your authenticator app

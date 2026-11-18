@@ -64,6 +64,23 @@ in asks for the 6-digit code after your password. You also get 8 one-time recove
 when the phone is lost. Codes can't be reused, and changing your password signs out every other
 device.
 
+### Forgot password (email)
+
+**Forgot password?** on the log-in page emails a link that works once, for 1 hour; using it
+signs out every device. Emails go out over SMTP, so any provider works: Gmail or Outlook (with
+an app password), Brevo, Resend, SendGrid, Mailgun... Set these on the server:
+
+| Variable | Example |
+| --- | --- |
+| `APP_URL` | `https://your-site.onrender.com` (the site's address, used in the link) |
+| `SMTP_HOST` | `smtp.gmail.com`, `smtp-relay.brevo.com`, `smtp.resend.com`... |
+| `SMTP_PORT` | `587` (STARTTLS) or `465` (SSL) |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | from your provider (for Gmail, an app password) |
+| `MAIL_FROM` | `NeverDisc <no-reply@yourdomain.com>` |
+
+Without `SMTP_HOST`, development prints the email (with the link) in the backend's log instead;
+production refuses the request until email is set up.
+
 ## Run without Docker
 
 Backend (uses a local SQLite file by default):
@@ -99,6 +116,7 @@ the API, so the whole app runs as a single web service.
 | `DATABASE_URL` | the PostgreSQL connection string |
 | `SECRET_KEY` | a long random string |
 | `TMDB_API_KEY` | your TMDB key |
+| `APP_URL`, `SMTP_*`, `MAIL_FROM` | for forgot-password emails (see above) |
 | `UPCITEMDB_USER_KEY` | optional, a paid UPCitemdb key for more barcode lookups |
 
 The app refuses to start in production without a real `SECRET_KEY`. Health check path:
@@ -129,18 +147,20 @@ backend/
     schemas.py       request and response shapes
     security.py      password hashing, JWT
     two_factor.py    authenticator codes (TOTP), QR code, recovery codes
+    mailer.py        sending email over SMTP
     deps.py          current-user dependency
     tmdb.py          TMDB API client (films and TV)
     barcodes.py      barcode checks, UPCitemdb lookup, product-name cleaning
     routers/         auth, inventory (with stats), movies (TMDB search, barcode lookup),
-                     profile (bio, picture)
+                     profile (bio, picture), password_reset
   tests/             pytest, runs on in-memory SQLite
 frontend/
   src/
     api.ts           typed API client
     auth.tsx         login state
     router.tsx       tiny history-based router (no dependency)
-    pages/           HomePage, LoginPage, SignupPage, SettingsPage, DashboardPage,
+    pages/           HomePage, LoginPage, SignupPage, ForgotPasswordPage, ResetPasswordPage,
+                     SettingsPage, DashboardPage,
                      CollectionTab, ProfileTab
     components/      SiteHeader, AddDvdDialog, BarcodeScanner, DvdCase, TitleDetailsDialog,
                      StatTiles, BarList
@@ -153,6 +173,8 @@ frontend/
 | POST | `/api/auth/register` | Create an account |
 | POST | `/api/auth/login` | Get a JWT (OAuth2 password form, plus `otp` when two-factor is on) |
 | GET | `/api/auth/me` | Current user (with `two_factor_enabled`) |
+| POST | `/api/auth/forgot-password` | Email a one-time reset link (same answer for any email) |
+| POST | `/api/auth/reset-password` | Set a new password with the link's token |
 | PATCH | `/api/auth/profile` | Set your bio (up to 300 characters) |
 | PUT | `/api/auth/avatar` | Upload a profile picture (JPEG, PNG, WebP or GIF, 2 MB max) |
 | DELETE | `/api/auth/avatar` | Remove your profile picture |

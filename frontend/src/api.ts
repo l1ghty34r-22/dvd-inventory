@@ -262,6 +262,15 @@ export const api = {
       body: new URLSearchParams(otp ? { username: email, password, otp } : { username: email, password }),
     }),
 
+  forgotPassword: (email: string) =>
+    request<{ message: string }>("/auth/forgot-password", json("POST", { email })),
+
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ message: string }>(
+      "/auth/reset-password",
+      json("POST", { token, new_password: newPassword }),
+    ),
+
   changeEmail: (newEmail: string, password: string) =>
     request<User>("/auth/email", json("POST", { new_email: newEmail, password })),
 

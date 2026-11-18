@@ -2,7 +2,9 @@ import { useAuth } from "./auth";
 import { SiteHeader } from "./components/SiteHeader";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SignupPage } from "./pages/SignupPage";
 import { Redirect, usePath } from "./router";
@@ -21,6 +23,8 @@ function Page({ path }: { path: string }) {
     }
     return <LoginPage />;
   }
+  if (path === "/forgot-password") return <ForgotPasswordPage />;
+  if (path === "/reset-password") return <ResetPasswordPage />;
   if (path === "/signup") return user ? <Redirect to="/dashboard/collection" /> : <SignupPage />;
   if (path === "/settings") return user ? <SettingsPage /> : <Redirect to="/login" />;
   if (path.startsWith("/dashboard")) {

@@ -249,3 +249,14 @@ class TitlePreview(BaseModel):
     runtime: int | None
     details: TitleDetails
     owned_count: int
+
+
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    new_password: str = Field(min_length=8)
+
+    _check_password = field_validator("new_password")(_password_fits_bcrypt)

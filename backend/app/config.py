@@ -17,6 +17,16 @@ class Settings(BaseSettings):
     # Optional. Without it barcode lookups use UPCitemdb's free tier (about 100 a day).
     upcitemdb_user_key: str = ""
     cors_origins: str = "http://localhost:5173"
+    # The site's public address, used in links inside emails (password reset), e.g.
+    # https://neverdisc.onrender.com. Required in production so links can't be pointed elsewhere.
+    app_url: str = ""
+    # Outgoing email (SMTP). Leave smtp_host empty to print emails to the log instead.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    # Who the email is from, e.g. "NeverDisc <no-reply@yourdomain.com>".
+    mail_from: str = ""
     # Folder holding the built frontend. Only present in the production image.
     static_dir: str = "static"
 

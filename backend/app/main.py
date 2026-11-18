@@ -10,7 +10,7 @@ from starlette.types import Scope
 
 from app.config import settings
 from app.database import Base, engine, upgrade_schema
-from app.routers import auth, inventory, movies, profile
+from app.routers import auth, inventory, movies, password_reset, profile
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ app.include_router(auth.router)
 app.include_router(inventory.router)
 app.include_router(movies.router)
 app.include_router(profile.router)
+app.include_router(password_reset.router)
 
 
 @app.get("/api/health", tags=["health"])
