@@ -27,7 +27,12 @@ export function SiteHeader({ path }: { path: string }) {
               onLogout={handleLogout}
             />
           ) : (
-            path !== "/login" && (
+            // On the log-in page, offer the other door; everywhere else, Log in.
+            path === "/login" ? (
+              <Link to="/signup" className="button secondary">
+                Create account
+              </Link>
+            ) : (
               <Link to="/login" className="button primary">
                 Log in
               </Link>

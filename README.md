@@ -3,7 +3,7 @@
 Keep track of your DVD collection. Add films and TV shows by searching or scanning their barcode,
 see them on a shelf, click any case for the story and cast, and see stats on what you own.
 
-**Pages:** a home page explaining the app, a log-in page, and a dashboard with two tabs:
+**Pages:** a home page explaining the app, separate log-in and sign-up pages, and a dashboard with two tabs:
 *My collection* (headline stats, search, add, and the shelf) and *Profile* (films vs. shows,
 genres, decades, hours of film, and every title you own).
 
@@ -128,7 +128,7 @@ frontend/
     api.ts           typed API client
     auth.tsx         login state
     router.tsx       tiny history-based router (no dependency)
-    pages/           HomePage, LoginPage, DashboardPage, CollectionTab, ProfileTab
+    pages/           HomePage, LoginPage, SignupPage, DashboardPage, CollectionTab, ProfileTab
     components/      SiteHeader, AddDvdDialog, BarcodeScanner, DvdCase, TitleDetailsDialog,
                      StatTiles, BarList
 ```

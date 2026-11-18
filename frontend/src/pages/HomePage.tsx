@@ -36,7 +36,7 @@ export function HomePage() {
             </Link>
           ) : (
             <>
-              <Link to="/login?mode=register" className="button primary large">
+              <Link to="/signup" className="button primary large">
                 Create a free account
               </Link>
               <Link to="/login" className="button secondary large">

@@ -438,6 +438,116 @@ button:disabled {
   margin: 1.75rem 0 1rem;
 }
 
+.login-card {
+  width: min(24rem, 100%);
+  text-align: left;
+}
+
+.auth form .button {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.auth-switch {
+  padding-top: 1rem;
+  font-size: 0.95rem;
+  text-align: center;
+  border-top: 1px solid var(--line);
+}
+
+.auth-switch a {
+  font-weight: 600;
+}
+
+/* Create an account: wider, two columns - what you get on the left, the form on the right. */
+.signup-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  width: min(54rem, 100%);
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px #1617201a;
+}
+
+.signup-pitch {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+  padding: 2.5rem 2rem;
+  color: #fff;
+  background: linear-gradient(160deg, #4338ca, #312e81);
+}
+
+.signup-pitch h2 {
+  font-size: 1.8rem;
+}
+
+.signup-pitch p {
+  color: #e0e7ff;
+}
+
+.signup-pitch ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signup-pitch li {
+  position: relative;
+  padding-left: 1.75rem;
+  line-height: 1.4;
+}
+
+.signup-pitch li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #312e81;
+  background: #a5f3fc;
+  border-radius: 50%;
+}
+
+.signup-form {
+  padding: 2.25rem 2rem;
+}
+
+.signup-form > p.muted {
+  margin-top: 0.4rem;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .signup-card {
+    grid-template-columns: 1fr;
+  }
+
+  .signup-pitch {
+    padding: 1.75rem 1.5rem;
+  }
+
+  .signup-pitch h2 {
+    font-size: 1.4rem;
+  }
+
+  .signup-form {
+    padding: 1.75rem 1.5rem;
+  }
+}
+
 .auth .hint {
   margin-top: -0.5rem;
   font-size: 0.85rem;

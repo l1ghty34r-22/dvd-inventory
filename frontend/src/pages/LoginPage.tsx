@@ -4,17 +4,9 @@ import type { FormEvent } from "react";
 import { useAuth } from "../auth";
 import { Link } from "../router";
 
-type Mode = "login" | "register";
-
-function initialMode(): Mode {
-  return new URLSearchParams(window.location.search).get("mode") === "register"
-    ? "register"
-    : "login";
-}
-
+/** Log in: a small, plain card. Creating an account has its own page (SignupPage). */
 export function LoginPage() {
-  const { login, register } = useAuth();
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +18,7 @@ export function LoginPage() {
     setBusy(true);
     try {
       // On success the app sees the user and moves on to the dashboard.
-      await (mode === "login" ? login(email, password) : register(email, password));
+      await login(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
       setBusy(false);
@@ -35,13 +27,9 @@ export function LoginPage() {
 
   return (
     <main className="auth">
-      <div className="auth-card">
-        <h1>{mode === "login" ? "Log in" : "Create your account"}</h1>
-        <p className="muted">
-          {mode === "login"
-            ? "Welcome back. Your shelf is where you left it."
-            : "Free, and it takes a few seconds."}
-        </p>
+      <div className="auth-card login-card">
+        <h1>Welcome back</h1>
+        <p className="muted">Log in to see your shelf.</p>
 
         <form onSubmit={handleSubmit}>
           <label>
@@ -61,28 +49,19 @@ export function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              minLength={8}
+              autoComplete="current-password"
               required
             />
           </label>
-          {mode === "register" && <p className="muted hint">At least 8 characters.</p>}
           {error && <p className="error">{error}</p>}
           <button type="submit" className="button primary" disabled={busy}>
-            {mode === "login" ? "Log in" : "Create account"}
+            {busy ? "Logging in…" : "Log in"}
           </button>
         </form>
 
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => {
-            setMode(mode === "login" ? "register" : "login");
-            setError(null);
-          }}
-        >
-          {mode === "login" ? "New here? Create an account" : "Already have an account? Log in"}
-        </button>
+        <p className="auth-switch">
+          New to NeverDisc? <Link to="/signup">Create an account</Link>
+        </p>
       </div>
       <Link to="/" className="text-button back-link">
         ← Back to the home page
