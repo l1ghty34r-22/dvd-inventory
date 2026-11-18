@@ -45,6 +45,19 @@ def upgrade_schema(bind: Engine) -> None:
                     text("CREATE UNIQUE INDEX uq_movies_media_tmdb ON movies (media_type, tmdb_id)")
                 )
 
+        if "users" in tables:
+            columns = {column["name"] for column in inspector.get_columns("users")}
+            new_columns = {
+                "token_version": "INTEGER NOT NULL DEFAULT 0",
+                "totp_secret": "VARCHAR(64)",
+                "totp_enabled": "BOOLEAN NOT NULL DEFAULT FALSE",
+                "totp_last_step": "INTEGER",
+                "recovery_codes": "JSON",
+            }
+            for name, definition in new_columns.items():
+                if name not in columns:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {definition}"))
+
         if "inventory_items" in tables:
             columns = {column["name"] for column in inspector.get_columns("inventory_items")}
             if "barcode" not in columns:

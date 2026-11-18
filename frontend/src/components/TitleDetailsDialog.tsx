@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { api } from "../api";
+import { api, CONDITIONS } from "../api";
 import type { DiscFormat, InventoryItem, InventoryItemChanges, InventoryItemDetails } from "../api";
 import { TitleBody, TitleHeader } from "./TitleInfo";
 
-const CONDITIONS = ["New", "Sealed", "Used", "Damaged"];
 // Short names so the Format dropdown doesn't cut off.
 const FORMAT_OPTIONS: { value: DiscFormat; label: string }[] = [
   { value: "dvd", label: "DVD" },
@@ -97,7 +96,6 @@ function CopyFields({ item, onRemoved }: { item: InventoryItem; onRemoved: () =>
   const [format, setFormat] = useState<DiscFormat>(item.format);
   const [location, setLocation] = useState(item.location ?? "");
   const [condition, setCondition] = useState(item.condition ?? "");
-  const [confirming, setConfirming] = useState(false);
   const savedLocation = useRef(item.location ?? "");
   // Keep a condition saved before these choices existed, so it isn't silently dropped.
   const conditions =
@@ -197,33 +195,18 @@ function CopyFields({ item, onRemoved }: { item: InventoryItem; onRemoved: () =>
           <span className="copy-added-label">Added</span>
           <span>{formatDate(item.added_at)}</span>
         </div>
-        <div className={confirming ? "copy-bin confirming" : "copy-bin"}>
-          {confirming ? (
-            <div className="bin-confirm">
-              <span>Remove this copy?</span>
-              <button
-                type="button"
-                className="button danger"
-                onClick={() => remove.mutate()}
-                disabled={remove.isPending}
-              >
-                Remove
-              </button>
-              <button type="button" className="button secondary" onClick={() => setConfirming(false)}>
-                Keep
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="bin-button"
-              onClick={() => setConfirming(true)}
-              aria-label="Remove from shelf"
-              title="Remove from shelf"
-            >
-              <BinIcon />
-            </button>
-          )}
+        <div className="copy-bin">
+          {/* One click removes the disc and closes the details; no confirm step. */}
+          <button
+            type="button"
+            className="bin-button"
+            onClick={() => remove.mutate()}
+            disabled={remove.isPending}
+            aria-label="Remove from shelf"
+            title="Remove from shelf"
+          >
+            <BinIcon />
+          </button>
         </div>
       </div>
       <p className="copy-status" aria-live="polite">

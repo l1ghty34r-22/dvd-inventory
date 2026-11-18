@@ -7,9 +7,12 @@ import type { User } from "./api";
 interface AuthState {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** `otp` is the authenticator (or recovery) code, for accounts with two-factor on. */
+  login: (email: string, password: string, otp?: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** After a settings change: store the user the server sent back, and a new token if any. */
+  updateAccount: (user: User | null, token?: string) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -28,8 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { access_token } = await api.login(email, password);
+  const login = useCallback(async (email: string, password: string, otp?: string) => {
+    const { access_token } = await api.login(email, password, otp);
     setToken(access_token);
     setUser(await api.me());
   }, []);
@@ -47,9 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateAccount = useCallback((next: User | null, token?: string) => {
+    if (token) setToken(token);
+    if (next) setUser(next);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
-    [user, loading, login, register, logout],
+    () => ({ user, loading, login, register, logout, updateAccount }),
+    [user, loading, login, register, logout, updateAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

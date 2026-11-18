@@ -5,7 +5,8 @@ see them on a shelf, click any case for the story and cast, and see stats on wha
 
 **Pages:** a home page explaining the app, separate log-in and sign-up pages, and a dashboard with two tabs:
 *My collection* (headline stats, search, add, and the shelf) and *Profile* (films vs. shows,
-genres, decades, hours of film, and every title you own).
+genres, decades, hours of film, and every title you own), and a **Settings** page (from the
+account menu) to change your email or password and turn on two-factor authentication.
 
 **Stack:** FastAPI, SQLAlchemy, PostgreSQL, React, TypeScript, Vite, TanStack Query, Docker, GitHub Actions.
 
@@ -53,6 +54,14 @@ unavailable, you type the title instead and the barcode is still saved.
   your dev machine, use the deployed site or an HTTPS tunnel.
 - UPCitemdb's free tier needs no key and allows about 100 lookups a day (and a few per minute).
   For more, set `UPCITEMDB_USER_KEY` to a paid key.
+
+### Two-factor authentication
+
+In Settings, **Set up two-factor** shows a QR code for any authenticator app (Google
+Authenticator, Microsoft Authenticator, 1Password, Authy...). After you confirm a code, logging
+in asks for the 6-digit code after your password. You also get 8 one-time recovery codes for
+when the phone is lost. Codes can't be reused, and changing your password signs out every other
+device.
 
 ## Run without Docker
 
@@ -118,6 +127,7 @@ backend/
     models.py        User, Movie, InventoryItem
     schemas.py       request and response shapes
     security.py      password hashing, JWT
+    two_factor.py    authenticator codes (TOTP), QR code, recovery codes
     deps.py          current-user dependency
     tmdb.py          TMDB API client (films and TV)
     barcodes.py      barcode checks, UPCitemdb lookup, product-name cleaning
@@ -128,7 +138,8 @@ frontend/
     api.ts           typed API client
     auth.tsx         login state
     router.tsx       tiny history-based router (no dependency)
-    pages/           HomePage, LoginPage, SignupPage, DashboardPage, CollectionTab, ProfileTab
+    pages/           HomePage, LoginPage, SignupPage, SettingsPage, DashboardPage,
+                     CollectionTab, ProfileTab
     components/      SiteHeader, AddDvdDialog, BarcodeScanner, DvdCase, TitleDetailsDialog,
                      StatTiles, BarList
 ```
@@ -138,8 +149,13 @@ frontend/
 | Method | Path | What it does |
 | --- | --- | --- |
 | POST | `/api/auth/register` | Create an account |
-| POST | `/api/auth/login` | Get a JWT (OAuth2 password form) |
-| GET | `/api/auth/me` | Current user |
+| POST | `/api/auth/login` | Get a JWT (OAuth2 password form, plus `otp` when two-factor is on) |
+| GET | `/api/auth/me` | Current user (with `two_factor_enabled`) |
+| POST | `/api/auth/email` | Change email (needs the password) |
+| POST | `/api/auth/password` | Change password; signs out other devices, returns a new token |
+| POST | `/api/auth/2fa/setup` | Start two-factor set-up: secret and QR code (needs the password) |
+| POST | `/api/auth/2fa/enable` | Confirm with a code; returns the recovery codes once |
+| POST | `/api/auth/2fa/disable` | Turn two-factor off (password and a code) |
 | GET | `/api/inventory` | Your DVDs, with `q` (title or barcode), `limit`, `offset` |
 | GET | `/api/inventory/stats` | Totals (films, TV shows), top genre, oldest and newest |
 | GET | `/api/inventory/profile` | Full breakdown: genres, decades, hours of film, every title |

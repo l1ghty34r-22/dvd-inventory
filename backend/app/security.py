@@ -19,16 +19,16 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, version: int = 0) -> str:
     expires = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": str(user_id), "exp": expires}
+    payload = {"sub": str(user_id), "ver": version, "exp": expires}
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> int | None:
-    """Return the user id inside the token, or None if it is invalid or expired."""
+def decode_access_token(token: str) -> tuple[int, int] | None:
+    """Return (user id, token version) from the token, or None if it is invalid or expired."""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-        return int(payload["sub"])
-    except (jwt.PyJWTError, KeyError, ValueError):
+        return int(payload["sub"]), int(payload.get("ver", 0))
+    except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         return None

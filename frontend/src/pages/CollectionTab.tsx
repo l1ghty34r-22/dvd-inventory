@@ -4,7 +4,6 @@ import { useState } from "react";
 import { api } from "../api";
 import { AddDvdDialog } from "../components/AddDvdDialog";
 import { DvdCase } from "../components/DvdCase";
-import { StatTiles } from "../components/StatTiles";
 import { TitleDetailsDialog } from "../components/TitleDetailsDialog";
 
 export function CollectionTab() {
@@ -12,6 +11,7 @@ export function CollectionTab() {
   const [adding, setAdding] = useState(false);
   const [openItemId, setOpenItemId] = useState<number | null>(null);
 
+  // Only used to tell an empty shelf apart; the numbers themselves live on the Profile tab.
   const stats = useQuery({ queryKey: ["inventory", "stats"], queryFn: api.stats });
   const inventory = useQuery({
     queryKey: ["inventory", "list", search],
@@ -33,17 +33,6 @@ export function CollectionTab() {
           Add a DVD
         </button>
       </div>
-
-      {stats.data && (
-        <StatTiles
-          tiles={[
-            { label: "Discs on the shelf", value: stats.data.total },
-            { label: "Films", value: stats.data.films },
-            { label: "TV shows", value: stats.data.tv_shows },
-            { label: "Added this month", value: stats.data.added_this_month },
-          ]}
-        />
-      )}
 
       {shelfIsEmpty ? (
         <section className="empty">

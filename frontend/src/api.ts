@@ -1,11 +1,25 @@
 export interface User {
   id: number;
   email: string;
+  two_factor_enabled: boolean;
 }
+
+export interface TwoFactorSetup {
+  secret: string;
+  otpauth_uri: string;
+  /** A QR code as an SVG data: URL, ready for an <img>. */
+  qr_svg: string;
+}
+
+/** The login error that means "now ask for the authenticator code". */
+export const TWO_FACTOR_REQUIRED = "Two-factor code required";
 
 export type MediaType = "movie" | "tv";
 
 export type DiscFormat = "dvd" | "bluray" | "uhd";
+
+/** The condition choices offered when adding or editing a disc. */
+export const CONDITIONS = ["New", "Sealed", "Used", "Damaged"];
 
 export const FORMAT_LABELS: Record<DiscFormat, string> = {
   dvd: "DVD",
@@ -237,11 +251,30 @@ export const api = {
     request<User>("/auth/register", json("POST", { email, password })),
 
   // The backend login endpoint follows the OAuth2 password flow, which is form-encoded.
-  login: (email: string, password: string) =>
+  login: (email: string, password: string, otp?: string) =>
     request<{ access_token: string }>("/auth/login", {
       method: "POST",
-      body: new URLSearchParams({ username: email, password }),
+      body: new URLSearchParams(otp ? { username: email, password, otp } : { username: email, password }),
     }),
+
+  changeEmail: (newEmail: string, password: string) =>
+    request<User>("/auth/email", json("POST", { new_email: newEmail, password })),
+
+  /** Returns a fresh token: changing the password signs out every other device. */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ access_token: string }>(
+      "/auth/password",
+      json("POST", { current_password: currentPassword, new_password: newPassword }),
+    ),
+
+  twoFactorSetup: (password: string) =>
+    request<TwoFactorSetup>("/auth/2fa/setup", json("POST", { password })),
+
+  twoFactorEnable: (code: string) =>
+    request<{ recovery_codes: string[] }>("/auth/2fa/enable", json("POST", { code })),
+
+  twoFactorDisable: (password: string, code: string) =>
+    request<User>("/auth/2fa/disable", json("POST", { password, code })),
 
   me: () => request<User>("/auth/me"),
 

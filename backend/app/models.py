@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +17,16 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Bumped when the password changes, which signs out every other device (tokens carry it).
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    # Two-factor authentication. The secret is set while setting up, and only counts once
+    # totp_enabled is true. totp_last_step stops the same code being used twice.
+    totp_secret: Mapped[str | None] = mapped_column(String(64))
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    totp_last_step: Mapped[int | None] = mapped_column(Integer)
+    # SHA-256 hashes of the unused one-time recovery codes.
+    recovery_codes: Mapped[list[str] | None] = mapped_column(JSON)
 
     items: Mapped[list["InventoryItem"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"

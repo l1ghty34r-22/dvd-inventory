@@ -14,9 +14,10 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: DbSession) -> User:
-    user_id = decode_access_token(token)
-    user = db.get(User, user_id) if user_id is not None else None
-    if user is None:
+    decoded = decode_access_token(token)
+    user = db.get(User, decoded[0]) if decoded is not None else None
+    # A password change bumps token_version, so older tokens (other devices) stop working.
+    if user is None or decoded[1] != (user.token_version or 0):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

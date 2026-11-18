@@ -33,6 +33,11 @@
   box-sizing: border-box;
 }
 
+/* The hidden attribute must win over rules like input { display: block }. */
+[hidden] {
+  display: none !important;
+}
+
 /* Safety net: nothing should ever make the page itself scroll sideways. "clip" (unlike
    "hidden") does not create a scroll container, so sticky elements keep working. */
 html,
@@ -1719,20 +1724,7 @@ button.results-title:hover strong {
   transform: rotate(45deg);
 }
 
-.title-actions {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-  padding: 1rem;
-  background: var(--accent-soft);
-  border-radius: var(--radius);
-}
 
-.title-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
 
 .small-note {
   font-size: 0.85rem;
@@ -1859,10 +1851,6 @@ button.results-title:hover strong {
   font-size: 1rem;
 }
 
-.copy-bin.confirming {
-  grid-column: 1 / -1;
-  justify-self: end;
-}
 
 .bin-button {
   display: grid;
@@ -1879,18 +1867,7 @@ button.results-title:hover strong {
   background: var(--danger-soft);
 }
 
-.bin-confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
 
-.bin-confirm .button {
-  padding: 0.45rem 0.9rem;
-  font-size: 0.9rem;
-}
 
 .copy-status {
   min-height: 1.25rem;
@@ -1937,4 +1914,272 @@ button.results-title:hover strong {
 
 .auth-notice .button {
   width: 100%;
+}
+
+/* Add dialog, right side: the "Add to my collection" box (condition, shelf, format). */
+.side-add {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  padding: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.side-add .side-msg {
+  font-size: 0.9rem;
+}
+
+.side-add .format-picker-buttons {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.side-add .format-choice {
+  width: 100%;
+}
+
+
+@media (max-width: 760px) {
+  .side-add {
+    gap: 0.6rem;
+    padding: 0.7rem;
+  }
+
+  .side-add label {
+    font-size: 0.8rem;
+  }
+
+  .side-add select {
+    padding-right: 1.6rem;
+    background-position: right 0.5rem center;
+  }
+
+  .side-add input,
+  .side-add select {
+    padding: 0.5rem 0.55rem;
+  }
+}
+
+/* Let the box's fields shrink to its width in the narrow phone column. */
+.side-add > *,
+.side-add input,
+.side-add select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .side-add {
+    padding: 0.55rem;
+  }
+}
+
+/* Add dialog header: no title; on a title's page it holds Back to search / Not this one? / Scan another. */
+.add-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.head-button {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .head-button {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Narrow right column: buttons may wrap to two lines, and long barcodes must wrap too. */
+.side-add .format-choice {
+  line-height: 1.2;
+  border-radius: 10px;
+}
+
+.side-add .small-note {
+  overflow-wrap: anywhere;
+}
+
+/* Add dialog when it first opens: just the search, one column, a bit narrower. */
+.add-body.search-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.add-dialog:has(.search-only) {
+  width: min(46rem, calc(100vw - 2rem));
+}
+
+/* Header: the slogan, then (on a title's page) Back to search etc., then close. */
+.add-head {
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.add-head h2 {
+  font-size: 1.2rem;
+}
+
+.add-head-actions {
+  margin-left: auto;
+}
+
+.add-head-actions:empty {
+  display: none;
+}
+
+.add-head h2 + .add-head-actions:empty + .close-button,
+.add-head-actions:empty ~ .close-button {
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .add-head h2 {
+    font-size: 1.05rem;
+  }
+
+  /* Buttons drop to their own row under the slogan. */
+  .add-head-actions:not(:empty) {
+    order: 3;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
+/* Settings page */
+
+.settings {
+  flex: 1;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.settings > h1 {
+  margin: 0.75rem 0 1.5rem;
+}
+
+.settings-section {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 1rem 2rem;
+  padding: 1.75rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.settings-section-head h2 {
+  font-size: 1.1rem;
+}
+
+.settings-section-head p {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.settings-section-body {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.settings-form {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 26rem;
+}
+
+.settings-form .hint {
+  margin-top: -0.5rem;
+  font-size: 0.85rem;
+}
+
+.settings-form > .button {
+  justify-self: start;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.twofa-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-pill {
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+.status-pill.on {
+  color: var(--confirm);
+  background: #ecfdf3;
+}
+
+.status-pill.off {
+  color: var(--muted);
+  background: var(--surface-strong);
+}
+
+.twofa-steps {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.twofa-steps li {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.twofa-qr {
+  width: 180px;
+  height: 180px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.twofa-secret,
+.recovery-codes code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.recovery {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 30rem;
+}
+
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .settings-section {
+    grid-template-columns: 1fr;
+  }
 }

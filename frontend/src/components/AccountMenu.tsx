@@ -66,6 +66,9 @@ export function AccountMenu({ user, showDashboardLink, onLogout }: Props) {
               Dashboard
             </Link>
           )}
+          <Link to="/settings" className="account-item" onClick={() => setOpen(false)}>
+            Settings
+          </Link>
           <button
             type="button"
             className="account-item"

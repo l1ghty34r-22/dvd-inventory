@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { ApiError } from "../api";
+import { ApiError, TWO_FACTOR_REQUIRED } from "../api";
 import { useAuth } from "../auth";
 import { Link } from "../router";
 
@@ -13,6 +13,9 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   // Set when the email has no account, so we can point to sign-up instead of a plain error.
   const [unknownEmail, setUnknownEmail] = useState<string | null>(null);
+  // Once the password is right for an account with two-factor on, ask for the code.
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
@@ -22,10 +25,13 @@ export function LoginPage() {
     setBusy(true);
     try {
       // On success the app sees the user and moves on to the dashboard.
-      await login(email, password);
+      await login(email, password, needsCode ? code.trim() : undefined);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) setUnknownEmail(email.trim());
-      else setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      else if (err instanceof ApiError && err.message === TWO_FACTOR_REQUIRED) setNeedsCode(true);
+      else if (err instanceof ApiError && err.message === "Incorrect two-factor code") {
+        setError("That code didn't work. Use the newest one from your app, or a recovery code.");
+      } else setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
       setBusy(false);
     }
   }
@@ -58,6 +64,23 @@ export function LoginPage() {
               required
             />
           </label>
+          {needsCode && (
+            <label>
+              Code from your authenticator app
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="6-digit code, or a recovery code"
+                autoFocus
+                required
+              />
+            </label>
+          )}
+          {needsCode && !error && (
+            <p className="muted hint">Two-factor authentication is on for this account.</p>
+          )}
           {error && <p className="error">{error}</p>}
           {unknownEmail && (
             <div className="auth-notice" role="alert">
@@ -74,7 +97,7 @@ export function LoginPage() {
             </div>
           )}
           <button type="submit" className="button primary" disabled={busy}>
-            {busy ? "Logging in…" : "Log in"}
+            {busy ? "Logging in…" : needsCode ? "Verify and log in" : "Log in"}
           </button>
         </form>
 

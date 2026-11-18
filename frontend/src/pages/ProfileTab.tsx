@@ -41,6 +41,7 @@ function TitleList({ heading, titles }: { heading: string; titles: OwnedTitle[] 
 
 export function ProfileTab() {
   const profile = useQuery({ queryKey: ["inventory", "profile"], queryFn: api.profile });
+  const stats = useQuery({ queryKey: ["inventory", "stats"], queryFn: api.stats });
 
   if (profile.isPending) return <p className="muted">Loading your profile…</p>;
   if (profile.isError) {
@@ -75,6 +76,7 @@ export function ProfileTab() {
           { label: "Films", value: p.films },
           { label: "TV shows", value: p.tv_shows },
           { label: "Hours of film", value: hours },
+          { label: "Added this month", value: stats.data?.added_this_month ?? "–" },
         ]}
       />
 

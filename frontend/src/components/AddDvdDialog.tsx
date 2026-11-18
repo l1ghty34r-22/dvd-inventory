@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
-import { api, ApiError, FORMAT_LABELS } from "../api";
+import { api, ApiError, CONDITIONS, FORMAT_LABELS } from "../api";
 import type {
   BarcodeLookup,
   DiscFormat,
@@ -139,6 +139,10 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   const [term, setTerm] = useState("");
   const [manual, setManual] = useState(false);
   const [year, setYear] = useState("");
+  // Set in the "Add to my collection" box on the right; kept between adds so a run of discs
+  // for the same shelf only needs it typed once.
+  const [condition, setCondition] = useState("");
+  const [location, setLocation] = useState("");
   // Everything added while this popup is open, newest first, so you can see (and undo) it.
   const [added, setAdded] = useState<InventoryItem[]>([]);
   const addedKeys = added.map((item) => resultKey(item.movie));
@@ -209,7 +213,17 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
     addItem.reset();
   }
 
-  function addTitle(movie: MovieSearchResult | TitlePreview, format: DiscFormat) {
+  // Condition and shelf from the box on the right (title pages and hand entry).
+  const copyDetails = {
+    condition: condition || null,
+    location: location.trim() || null,
+  };
+
+  function addTitle(
+    movie: MovieSearchResult | TitlePreview,
+    format: DiscFormat,
+    extra: { condition?: string | null; location?: string | null } = {},
+  ) {
     const fields: TitleFields = {
       title: movie.title,
       year: movie.year,
@@ -217,13 +231,13 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
       media_type: movie.media_type,
       poster_url: movie.poster_url,
     };
-    addItem.mutate({ ...fields, barcode, format });
+    addItem.mutate({ ...fields, ...extra, barcode, format });
   }
 
   function addManually(format: DiscFormat) {
     if (!term.trim()) return;
     addItem.mutate(
-      { title: term.trim(), year: year ? Number(year) : null, barcode, format },
+      { title: term.trim(), year: year ? Number(year) : null, barcode, format, ...copyDetails },
       {
         onSuccess: () => {
           setTerm("");
@@ -263,6 +277,9 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
   others.push(...(scan?.candidates ?? []));
   const otherMatches = target ? others.filter((o) => resultKey(o) !== resultKey(target)) : [];
 
+  // The right-hand column only appears once it has something to show.
+  const showSide = target !== null || showManual || added.length > 0;
+
   const addError = addItem.isError && (
     <p className="error">Could not add it: {addItem.error.message}</p>
   );
@@ -271,13 +288,39 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
     <div className="add-layout">
       <header className="add-head">
         <h2 id="add-dialog-title">Every Disc Deserves a Shelf</h2>
+        {/* On a title's page, the ways out of it live here, up top. */}
+        <div className="add-head-actions">
+          {target && (
+            <>
+              <button type="button" className="button secondary head-button" onClick={backToSearch}>
+                ← Back to search
+              </button>
+              {otherMatches.length > 0 && !targetAdded && (
+                <button
+                  type="button"
+                  className="button secondary head-button"
+                  onClick={() => setShowOthers(!showOthers)}
+                  aria-expanded={showOthers}
+                >
+                  {showOthers ? "Hide other matches" : "Not this one?"}
+                </button>
+              )}
+              {targetAdded && (
+                <button type="button" className="button primary head-button" onClick={scanAnother}>
+                  Scan another
+                </button>
+              )}
+            </>
+          )}
+        </div>
         <button type="button" className="close-button" onClick={onClose} aria-label="Close">
           ×
         </button>
       </header>
 
-      {/* Between the fixed header and footer: this part scrolls. */}
-      <div className="add-body">
+      {/* Between the fixed header and footer: this part scrolls. Until there is a title to add
+          or something added, it is just the search (no right-hand column). */}
+      <div className={showSide ? "add-body" : "add-body search-only"}>
         {/* Left: find the title and add it */}
         <div className="add-main">
           {target ? (
@@ -293,60 +336,6 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
                 <p className="error">Could not load this title: {preview.error.message}</p>
               )}
               {preview.data && <TitleHeader title={preview.data} details={preview.data.details} />}
-
-              {preview.data && (
-                <div className="title-actions" aria-live="polite">
-                  {targetAdded ? (
-                    <p className="confirm">
-                      <strong>Added {preview.data.title} to your collection.</strong>
-                    </p>
-                  ) : (
-                    preview.data.owned_count > 0 && (
-                      <p className="muted">
-                        You already own{" "}
-                        {preview.data.owned_count === 1
-                          ? "a copy"
-                          : `${preview.data.owned_count} copies`}
-                        .
-                      </p>
-                    )
-                  )}
-                  <FormatPicker
-                    label={
-                      targetAdded || preview.data.owned_count > 0
-                        ? "Add another copy as:"
-                        : "Add to my collection as:"
-                    }
-                    suggested={suggested}
-                    disabled={addItem.isPending}
-                    onPick={(format) => preview.data && addTitle(preview.data, format)}
-                  />
-                  {barcode && (
-                    <p className="muted small-note">Barcode {barcode} is saved with it.</p>
-                  )}
-                  {addError}
-                  <div className="title-links">
-                    {targetAdded && (
-                      <button type="button" className="button primary" onClick={scanAnother}>
-                        Scan another
-                      </button>
-                    )}
-                    {otherMatches.length > 0 && !targetAdded && (
-                      <button
-                        type="button"
-                        className="button secondary"
-                        onClick={() => setShowOthers(!showOthers)}
-                        aria-expanded={showOthers}
-                      >
-                        {showOthers ? "Hide other matches" : "Not this one?"}
-                      </button>
-                    )}
-                    <button type="button" className="button secondary" onClick={backToSearch}>
-                      Back to search
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {showOthers && otherMatches.length > 0 && (
                 <section className="details-section">
@@ -413,13 +402,9 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
                         onChange={(e) => setYear(e.target.value)}
                       />
                     </label>
-                    <FormatPicker
-                      label="Add to my collection as:"
-                      suggested={suggested}
-                      disabled={addItem.isPending || !term.trim()}
-                      onPick={addManually}
-                    />
-                    {addError}
+                    <p className="muted small-note">
+                      Pick the condition, shelf and format on the right to add it.
+                    </p>
                   </>
                 )}
               </form>
@@ -513,12 +498,6 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
                       })}
                     </ul>
                   )}
-                  {!search.data && !search.isFetching && !looksLikeBarcode(term) && !scanning && (
-                    <p className="muted">
-                      Type at least two letters, or tap the barcode button to scan the back of the
-                      case.
-                    </p>
-                  )}
                 </div>
               )}
             </>
@@ -526,9 +505,70 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
         </div>
 
         {/* Right: only what you have added while this popup is open */}
-        <aside className="add-side" aria-label="Added this time">
+        {showSide && (
+        <aside className="add-side" aria-label="Your copy and what you added to your shelf">
+          {/* On a title's page or in hand entry: how to add it, with condition and shelf. */}
+          {(preview.data || (showManual && !target)) && (
+            <section className="side-add" aria-live="polite">
+              <h3>{target ? "Add to my collection" : "Add it by hand"}</h3>
+              {target && preview.data && (
+                targetAdded ? (
+                  <p className="confirm side-msg">
+                    <strong>Added {preview.data.title}.</strong>
+                  </p>
+                ) : (
+                  preview.data.owned_count > 0 && (
+                    <p className="muted side-msg">
+                      You already own{" "}
+                      {preview.data.owned_count === 1
+                        ? "a copy"
+                        : `${preview.data.owned_count} copies`}
+                      .
+                    </p>
+                  )
+                )
+              )}
+              <label>
+                Condition
+                <select value={condition} onChange={(e) => setCondition(e.target.value)}>
+                  <option value="">Not set</option>
+                  {CONDITIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Where it is
+                <input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Shelf A"
+                  maxLength={100}
+                />
+              </label>
+              <FormatPicker
+                label={
+                  target && preview.data && (targetAdded || preview.data.owned_count > 0)
+                    ? "Add another copy as:"
+                    : "Add as:"
+                }
+                suggested={suggested}
+                disabled={addItem.isPending || (!target && !term.trim())}
+                onPick={(format) =>
+                  target && preview.data
+                    ? addTitle(preview.data, format, copyDetails)
+                    : addManually(format)
+                }
+              />
+              {barcode && <p className="muted small-note">Barcode {barcode} is saved with it.</p>}
+              {addError}
+            </section>
+          )}
+
           <h3>
-            Added this time
+            Added to shelf
             {added.length > 0 && <span className="added-count">{added.length}</span>}
           </h3>
           {undo.isError && <p className="error">Could not undo it: {undo.error.message}</p>}
@@ -563,6 +603,7 @@ function AddDvdBody({ onClose, startScanning }: { onClose: () => void; startScan
             </ul>
           )}
         </aside>
+        )}
       </div>
 
       {/* Always visible at the bottom of the popup, however far you scroll. */}

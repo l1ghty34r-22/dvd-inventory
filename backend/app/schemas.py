@@ -10,17 +10,18 @@ MediaType = Literal["movie", "tv"]
 DiscFormat = Literal["dvd", "bluray", "uhd"]
 
 
+def _password_fits_bcrypt(value: str) -> str:
+    # bcrypt only hashes the first 72 bytes, so reject anything longer.
+    if len(value.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
+    return value
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
 
-    @field_validator("password")
-    @classmethod
-    def password_fits_bcrypt(cls, value: str) -> str:
-        # bcrypt only hashes the first 72 bytes, so reject anything longer.
-        if len(value.encode("utf-8")) > 72:
-            raise ValueError("Password must be at most 72 bytes")
-        return value
+    _check_password = field_validator("password")(_password_fits_bcrypt)
 
 
 class UserOut(BaseModel):
@@ -28,6 +29,42 @@ class UserOut(BaseModel):
 
     id: int
     email: EmailStr
+    two_factor_enabled: bool = Field(validation_alias="totp_enabled", default=False)
+
+
+class EmailChange(BaseModel):
+    new_email: EmailStr
+    password: str
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+    _check_password = field_validator("new_password")(_password_fits_bcrypt)
+
+
+class PasswordConfirm(BaseModel):
+    password: str
+
+
+class TwoFactorSetup(BaseModel):
+    secret: str
+    otpauth_uri: str
+    qr_svg: str
+
+
+class TwoFactorCode(BaseModel):
+    code: str = Field(min_length=6, max_length=20)
+
+
+class TwoFactorDisable(BaseModel):
+    password: str
+    code: str = Field(min_length=6, max_length=20)
+
+
+class RecoveryCodes(BaseModel):
+    recovery_codes: list[str]
 
 
 class Token(BaseModel):
